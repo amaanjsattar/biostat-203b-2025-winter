@@ -35,11 +35,14 @@ sessionInfo()
 
 5. After this course, you can make this repository public and use it to demonstrate your skill sets on job market.
 
-**Solution** Done. 
+**Solution**: Done. 
 
 ## Q2. Data ethics training
 
 This exercise (and later in this course) uses the [MIMIC-IV data v3.1](https://physionet.org/content/mimiciv/3.1/), a freely accessible critical care database developed by the MIT Lab for Computational Physiology. Follow the instructions at <https://mimic.mit.edu/docs/gettingstarted/> to (1) complete the CITI `Data or Specimens Only Research` course and (2) obtain the PhysioNet credential for using the MIMIC-IV data. Display the verification links to your completion report and completion certificate here. **You must complete Q2 before working on the remaining questions.** (Hint: The CITI training takes a few hours and the PhysioNet credentialing takes a couple days; do not leave it to the last minute.)
+
+**Solution**: [Citi Completion Report](https://www.citiprogram.org/verify/?k9f2ad8d9-7bc6-4a7e-9a3a-267a3e5581cf-67219680)
+[CITI Completion Certificate](https://www.citiprogram.org/verify/?w81e29d37-3ca5-4d3e-8e1d-04daf9f458c3-67219680)
 
 ## Q3. Linux Shell Commands
 
