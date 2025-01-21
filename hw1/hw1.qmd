@@ -148,7 +148,29 @@ We observe that there are 223,452 patients in the `admissions.csv.gz`, and 364,6
 
 6. What are the possible values taken by each of the variable `admission_type`, `admission_location`, `insurance`, and `ethnicity`? Also report the count for each unique value of these variables in decreasing order. (Hint: combine Linux commands `zcat`, `head`/`tail`, `awk`, `uniq -c`, `wc`, `sort`, and so on; skip the header line.)
 
+**Solution**:  `admission_type`
+We observe that the possible values for `admission_type` are: `EW EMER.`, `EU OBSERVATION`, `OBSERVATION ADMIT`, `URGENT`, `SURGICAL SAME DAY ADMISSION`, `DIRECT OBSERVATION`, `DIRECT EMER.`, `ELECTIVE`, and `AMBULATORY OBSERVATION`. Frequencies for each unique value are displayed below, in descending order:
+```{bash}
+zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $6}' | sort | uniq -c | sort -nr 
+```
+**Solution**: `admission_location`
+We observe that the possible values for `admission_location` are: `EMERGENCY ROOM`, `PHYSICIAN REFERRAL`, `TRANSFER FROM HOSPITAL`, `WALK-IN/SELF REFERRAL`, `CLINIC REFERRAL`, `PROCEDURE SITE`, `TRANSFER FROM SKILLED NURSING FACILITY`, `INTERNAL TRANSFER TO OR FROM PSYCH`, `PACU`, `INFORMATION NOT AVAILABLE`, `AMBULATORY SURGERY TRANSFER`, and ` ` (a singular blank entry). Frequencies for each unique value are displayed below, in descending order:
 
+```{bash}
+zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $8}' | sort | uniq -c | sort -nr
+```
+**Solution**: `insurance`
+We observe that the possible values for `insurance` are: `Medicare`, `Private`, `Medicaid`, `Other`, ` ` (blank entry), and `No charge`. Frequences for each unique value are displayed below, in descending order:
+
+```{bash}
+zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $10}' | sort | uniq -c | sort -nr
+```
+**Solution**: `race`
+We observe that the possible values for `race` are `WHITE - RUSSIAN`, `WHITE - OTHER EUROPEAN`, `WHITE - EASTERN EUROPEAN`, `WHITE - BRAZILIAN`, `WHITE`, `UNKNOWN`, `UNABLE TO OBTAIN`, `SOUTH AMERICAN`, `PORTUGUESE`, `PATIENT DECLINED TO ANSWER`, `OTHER`, `NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER`, `MULTIPLE RACE/ETHNICITY`, `HISPANIC/LATINO - SALVADORAN`, `HISPANIC/LATINO - PUERTO RICAN`, `HISPANIC/LATINO - MEXICAN`, `HISPANIC/LATINO - HONDURAN`, `HISPANIC/LATINO - GUATEMALAN`, `HISPANIC/LATINO - DOMINICAN`, `HISPANIC/LATINO - CUBAN`, `HISPANIC/LATINO - COLUMBIAN`, `HISPANIC/LATINO - CENTRAL AMERICAN`, `HISPANIC OR LATINO`, `BLACK/CARIBBEAN ISLAND`, `BLACK/CAPE VERDEAN`, `BLACK/AFRICAN AMERICAN`, `BLACK/AFRICAN`, `ASIAN - SOUTH EAST ASIAN`, `ASIAN - KOREAN`, `ASIAN - CHINESE`, `ASIAN - ASIAN INDIAN`, `ASIAN`, `AMERICAN INDIAN/ALASKA NATIVE`. Frequencies for each unique value are displayed below, in descending order. 
+
+```{bash} 
+zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $13}' | sort | uniq | sort -nr
+```
 
 7. The `icusays.csv.gz` file contains all the ICU stays during the study period. How many ICU stays, identified by `stay_id`, are in this data file? How many unique patients, identified by `subject_id`, are in this data file?
 
