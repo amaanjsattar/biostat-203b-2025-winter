@@ -99,7 +99,14 @@ do
   ls -l $datafile
 done
 ```
+**Solution**: This bash script contains a `for loop`, which iterates through all the files in the `hosp` subfolder of our `mimic` dataset that match our specified criteria. We are ultimately returning a list of files in `long list` format, via the `ls -l` command. This returns one line per file, including the following information: file permissions, owner and group, file size (bytes), date of last modification, and filename. In this case, we specify patterns to identify in the filenames. The bracketed segment is referred to as an `expansion`, allowing us to specify different starting strings for different patters. The asterisk is a `wildcard` character, matching zero or more characters in our filenames. Lastly, we specify that our filename should conclude with a `.gz`. Essentially, the script will return the listed names of files in the hospital subfolder that end with `.gz` and start with either `a`,`l`, or `pa`. We can see that this will return the `admissions`, `labevents`, and  `patients` files.
+
 Display the number of lines in each data file using a similar loop. (Hint: combine linux commands `zcat <` and `wc -l`.)
+
+**Solution**: 
+```{bash}
+#| eval: false
+```
 
 5. Display the first few lines of `admissions.csv.gz`. How many rows are in this data file, excluding the header line? Each `hadm_id` identifies a hospitalization. How many hospitalizations are in this data file? How many unique patients (identified by `subject_id`) are in this data file? Do they match the number of patients listed in the `patients.csv.gz` file? (Hint: combine Linux commands `zcat <`, `head`/`tail`, `awk`, `sort`, `uniq`, `wc`, and so on.)
 
