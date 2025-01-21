@@ -35,7 +35,7 @@ sessionInfo()
 
 3. Top directories of the repository should be `hw1`, `hw2`, ... Maintain two branches `main` and `develop`. The `develop` branch will be your main playground, the place where you develop solution (code) to homework problems and write up report. The `main` branch will be your presentation area. Submit your homework files (Quarto file `qmd`, `html` file converted by Quarto, all code and extra data sets to reproduce results) in the `main` branch.
 
-**Solution**: I have created a 'hw1' directory and am actively maintaining two branches: 'main' and 'develop'. While working through homework assignments, I operate in the 'develop' branch, and I will merge the changes with the 'main' branch upon successful completion. The 'qmd' and rendered 'html' files are present in my 'hw1' directory, and any necessary additional files will be similarly present in 'main'. 
+**Solution**: I have created a `hw1` directory and am actively maintaining two branches: `main` and `develop`. While working through homework assignments, I operate in the `develop` branch, and I will merge the changes with the `main` branch upon successful completion. The `qmd` and rendered `html` files are present in my `hw1` directory, and any necessary additional files will be similarly present in `main`.
 
 4. After each homework due date, course reader and instructor will check out your `main` branch for grading. Tag each of your homework submissions with tag names `hw1`, `hw2`, ... Tagging time will be used as your submission time. That means if you tag your `hw1` submission after deadline, penalty points will be deducted for late submission.
 
@@ -62,32 +62,32 @@ ls -l ~/mimic/
 ```
 Refer to the documentation <https://physionet.org/content/mimiciv/3.1/> for details of data files. Do **not** put these data files into Git; they are big. Do **not** copy them into your directory. Do **not** decompress the gz data files. These create unnecessary big files and are not big-data-friendly practices. Read from the data folder `~/mimic` directly in following exercises. 
 
-**Solution**: I have downloaded the MIMIC-IV v3.1 data, and it is available at the specified location '~/mimic'. I have examined the file structure and adhered to all guidelines mentioned. 
+**Solution**: I have downloaded the MIMIC-IV v3.1 data, and it is available at the specified location `~/mimic`. I have examined the file structure and adhered to all guidelines mentioned. 
 
   Use Bash commands to answer following questions.
 
 2. Display the contents in the folders `hosp` and `icu` using Bash command `ls -l`. Why are these data files distributed as `.csv.gz` files instead of `.csv` (comma separated values) files? Read the page <https://mimic.mit.edu/docs/iv/> to understand what's in each folder.
 
-**Solution**: Here is the content of 'hosp' folder: 
+**Solution**: Here is the content of the `hosp` folder: 
 ```{bash}
 ls -l ~/mimic/hosp/
 
 ```
-Here is the content of the 'icu' folder: 
+Here is the content of the `icu` folder: 
 ```{bash} 
 ls -l ~/mimic/icu/
 ```
-We observe that the data files are compressed, existing in 'csv.gz' rather than '.csv' file format. The 'gz' in the naming convention refers to the method of compression, in this case being the "gzip" algorithm. This form of compression is standard practice when working with Linux and Unix operating systems. This compressed file format significantly reduces the file size, which is particularly important when handling 'big data'. This aids in both transferability and storage efficiency. Keeping the files in compressed format saves considerable storage space and bandwidth. Files can be read directly within most settings (e.g. R, Python, Linux) without the need for immediate manual decompression. My local download is over 10.66 GB large. In order to reduce the computational tolls associated with such large data, compression is a vastly useful implement.
+We observe that the data files are compressed, existing in `csv.gz` rather than `.csv` file format. The `.gz` in the naming convention refers to the method of compression, in this case being the `gzip` algorithm. This form of compression is standard practice when working with Linux and Unix operating systems. This compressed file format significantly reduces the file size, which is particularly important when handling 'big data'. This aids in both transferability and storage efficiency. Keeping the files in compressed format saves considerable storage space and bandwidth. Files can be read directly within most settings (e.g. R, Python, Linux) without the need for immediate manual decompression. My local download is over 10.66 GB large. In order to reduce the computational tolls associated with such large data, compression is a vastly useful implement.
 
 3. Briefly describe what Bash commands `zcat`, `zless`, `zmore`, and `zgrep` do.
 
-**Solution** 'zcat': This command outputs the uncompressed content of a '.gz' compressed file to a user's terminal without directly decompressing the file itself. This allows the user to view the contents of the file without directly modifying it through decompression, which can produce intermediate files that may not be necessary for the user's task at hand.
+**Solution** `zcat`: This command outputs the uncompressed content of a `.gz` compressed file to a user's terminal without directly decompressing the file itself. This allows the user to view the contents of the file without directly modifying it through decompression, which can produce intermediate files that may not be necessary for the user's task at hand.
 
-'zless': This command outputs the uncompressed content of a '.gz' compressed file to a user's terminal in a paginated fashion. This allows the user to interact with and peruse the file contents at their leisure. This command is often useful in the context of manual file exploration.
+`zless`: This command outputs the uncompressed content of a `.gz` compressed file to a user's terminal in a paginated fashion. This allows the user to interact with and peruse the file contents at their leisure. This command is often useful in the context of manual file exploration.
 
-'zmore': This command is similar to 'zless' in that it outputs the uncompressed content of a '.gz' compressed file to a user's terminal in a paginated fashion. However, this command utilizes the 'less' command for pagination. In fact, both commands have the analogues 'more' and 'less', which are applicable to non-compressed files. Subtle differences exist in the navigational features of each command. While 'zless' allows for forward and reverse scrolling, 'zmore' only allows for forward scrolling. 'Zless' offers search options and does not need to read an entire input file before starting. Ultimately, it is common convention to utilize 'zless' and 'less' in place of 'zmore' and 'more' for common purposes. 
+`zmore`: This command is similar to `zless` in that it outputs the uncompressed content of a `.gz` compressed file to a user's terminal in a paginated fashion. However, this command utilizes the `less` command for pagination. In fact, both commands have the analogues `more` and `less`, which are applicable to non-compressed files. Subtle differences exist in the navigational features of each command. While `zless` allows for forward and reverse scrolling, `zmore` only allows for forward scrolling. `zless` offers search options and does not need to read an entire input file before starting. Ultimately, it is common convention to utilize `zless` and `less` in place of `zmore` and `more` for common purposes. 
 
-'zgrep': This command is utilized to search for text patterns within compressed '.gz' files by applying the 'grep' command to a '.gz' compressed file. This allows users to search for patterns within a file without the need for explicit decompression. Much like the aforementioned commands, this allows for straightforward filtering and pattern recognition within large, compressed files without decompressing them beforehand.
+`zgrep`: This command is utilized to search for text patterns within compressed `.gz` files by applying the `grep` command to a `.gz` compressed file. This allows users to search for patterns within a file without the need for explicit decompression. Much like the aforementioned commands, this allows for straightforward filtering and pattern recognition within large, compressed files without decompressing them beforehand.
 
 
 
