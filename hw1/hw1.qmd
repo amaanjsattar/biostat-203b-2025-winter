@@ -27,7 +27,7 @@ sessionInfo()
 
 1. Apply for the [Student Developer Pack](https://education.github.com/pack) at GitHub using your UCLA email. You'll get GitHub Pro account for free (unlimited public and private repositories).
 
-**Solution**: Done.
+**Solution**: I was approved for the Student Developer Pack.
 
 2. Create a **private** repository `biostat-203b-2025-winter` and add `Hua-Zhou` and TA team (`Tomoki-Okuno` for Lec 1; `parsajamshidian` and `BowenZhang2001` for Lec 82) as your collaborators with write permission.
 

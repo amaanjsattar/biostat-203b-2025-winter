@@ -3159,13 +3159,25 @@ loaded via a namespace (and not attached):
 <h2 class="anchored" data-anchor-id="q1.-gitgithub">Q1. Git/GitHub</h2>
 <p><strong>No handwritten homework reports are accepted for this course.</strong> We work with Git and GitHub. Efficient and abundant use of Git, e.g., frequent and well-documented commits, is an important criterion for grading your homework.</p>
 <ol type="1">
-<li><p>Apply for the <a href="https://education.github.com/pack">Student Developer Pack</a> at GitHub using your UCLA email. You’ll get GitHub Pro account for free (unlimited public and private repositories).</p></li>
-<li><p>Create a <strong>private</strong> repository <code>biostat-203b-2025-winter</code> and add <code>Hua-Zhou</code> and TA team (<code>Tomoki-Okuno</code> for Lec 1; <code>parsajamshidian</code> and <code>BowenZhang2001</code> for Lec 82) as your collaborators with write permission.</p></li>
-<li><p>Top directories of the repository should be <code>hw1</code>, <code>hw2</code>, … Maintain two branches <code>main</code> and <code>develop</code>. The <code>develop</code> branch will be your main playground, the place where you develop solution (code) to homework problems and write up report. The <code>main</code> branch will be your presentation area. Submit your homework files (Quarto file <code>qmd</code>, <code>html</code> file converted by Quarto, all code and extra data sets to reproduce results) in the <code>main</code> branch.</p></li>
-<li><p>After each homework due date, course reader and instructor will check out your <code>main</code> branch for grading. Tag each of your homework submissions with tag names <code>hw1</code>, <code>hw2</code>, … Tagging time will be used as your submission time. That means if you tag your <code>hw1</code> submission after deadline, penalty points will be deducted for late submission.</p></li>
-<li><p>After this course, you can make this repository public and use it to demonstrate your skill sets on job market.</p></li>
+<li>Apply for the <a href="https://education.github.com/pack">Student Developer Pack</a> at GitHub using your UCLA email. You’ll get GitHub Pro account for free (unlimited public and private repositories).</li>
 </ol>
 <p><strong>Solution</strong>: Done.</p>
+<ol start="2" type="1">
+<li>Create a <strong>private</strong> repository <code>biostat-203b-2025-winter</code> and add <code>Hua-Zhou</code> and TA team (<code>Tomoki-Okuno</code> for Lec 1; <code>parsajamshidian</code> and <code>BowenZhang2001</code> for Lec 82) as your collaborators with write permission.</li>
+</ol>
+<p><strong>Solution</strong>: My private GitHub repository has been created, and the specified collaborators have been added with accompanying permissions.</p>
+<ol start="3" type="1">
+<li>Top directories of the repository should be <code>hw1</code>, <code>hw2</code>, … Maintain two branches <code>main</code> and <code>develop</code>. The <code>develop</code> branch will be your main playground, the place where you develop solution (code) to homework problems and write up report. The <code>main</code> branch will be your presentation area. Submit your homework files (Quarto file <code>qmd</code>, <code>html</code> file converted by Quarto, all code and extra data sets to reproduce results) in the <code>main</code> branch.</li>
+</ol>
+<p><strong>Solution</strong>: I have created a ‘hw1’ directory and am actively maintaining two branches: ‘main’ and ‘develop’. While working through homework assignments, I operate in the ‘develop’ branch, and I will merge the changes with the ‘main’ branch upon successful completion. The ‘qmd’ and rendered ‘html’ files are present in my ‘hw1’ directory, and any necessary additional files will be similarly present in ‘main’.</p>
+<ol start="4" type="1">
+<li>After each homework due date, course reader and instructor will check out your <code>main</code> branch for grading. Tag each of your homework submissions with tag names <code>hw1</code>, <code>hw2</code>, … Tagging time will be used as your submission time. That means if you tag your <code>hw1</code> submission after deadline, penalty points will be deducted for late submission.</li>
+</ol>
+<p><strong>Solution</strong>: I will tag my homework submissions with the provided tag names to timestamp my assignments.</p>
+<ol start="5" type="1">
+<li>After this course, you can make this repository public and use it to demonstrate your skill sets on job market.</li>
+</ol>
+<p><strong>Solution</strong>: I will publicize this repository at the close of this course to demonstrate my acquired skill set.</p>
 </section>
 <section id="q2.-data-ethics-training" class="level2">
 <h2 class="anchored" data-anchor-id="q2.-data-ethics-training">Q2. Data ethics training</h2>
@@ -3192,6 +3204,7 @@ drwxr-xr-x  12 amaanjsattar  staff    384 Jan 14 19:14 icu
 </div>
 <p>Refer to the documentation <a href="https://physionet.org/content/mimiciv/3.1/" class="uri">https://physionet.org/content/mimiciv/3.1/</a> for details of data files. Do <strong>not</strong> put these data files into Git; they are big. Do <strong>not</strong> copy them into your directory. Do <strong>not</strong> decompress the gz data files. These create unnecessary big files and are not big-data-friendly practices. Read from the data folder <code>~/mimic</code> directly in following exercises.</p>
 <p>Use Bash commands to answer following questions.</p>
+<p><strong>Solution</strong>: I have downloaded the MIMIC-IV v3.1 data, and it is available at the specified location ‘~/mimic’. I have examined the file structure and adhered to all guidelines mentioned.</p>
 <ol start="2" type="1">
 <li><p>Display the contents in the folders <code>hosp</code> and <code>icu</code> using Bash command <code>ls -l</code>. Why are these data files distributed as <code>.csv.gz</code> files instead of <code>.csv</code> (comma separated values) files? Read the page <a href="https://mimic.mit.edu/docs/iv/" class="uri">https://mimic.mit.edu/docs/iv/</a> to understand what’s in each folder.</p></li>
 <li><p>Briefly describe what Bash commands <code>zcat</code>, <code>zless</code>, <code>zmore</code>, and <code>zgrep</code> do.</p></li>
