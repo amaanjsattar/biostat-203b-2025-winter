@@ -3338,7 +3338,93 @@ drwxr-xr-x  12 amaanjsattar  staff    384 Jan 14 19:14 icu
 </div>
 <p>We observe that there are 223,452 patients in the <code>admissions.csv.gz</code>, and 364,627 patients in the <code>patients.csv.gz</code> file. These numbers clearly do not match.</p>
 <ol start="6" type="1">
-<li><p>What are the possible values taken by each of the variable <code>admission_type</code>, <code>admission_location</code>, <code>insurance</code>, and <code>ethnicity</code>? Also report the count for each unique value of these variables in decreasing order. (Hint: combine Linux commands <code>zcat</code>, <code>head</code>/<code>tail</code>, <code>awk</code>, <code>uniq -c</code>, <code>wc</code>, <code>sort</code>, and so on; skip the header line.)</p></li>
+<li>What are the possible values taken by each of the variable <code>admission_type</code>, <code>admission_location</code>, <code>insurance</code>, and <code>ethnicity</code>? Also report the count for each unique value of these variables in decreasing order. (Hint: combine Linux commands <code>zcat</code>, <code>head</code>/<code>tail</code>, <code>awk</code>, <code>uniq -c</code>, <code>wc</code>, <code>sort</code>, and so on; skip the header line.)</li>
+</ol>
+<p><strong>Solution</strong>: <code>admission_type</code> We observe that the possible values for <code>admission_type</code> are: <code>EW EMER.</code>, <code>EU OBSERVATION</code>, <code>OBSERVATION ADMIT</code>, <code>URGENT</code>, <code>SURGICAL SAME DAY ADMISSION</code>, <code>DIRECT OBSERVATION</code>, <code>DIRECT EMER.</code>, <code>ELECTIVE</code>, and <code>AMBULATORY OBSERVATION</code>. Frequencies for each unique value are displayed below, in descending order:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zcat</span> <span class="op">&lt;</span> ~/mimic/hosp/admissions.csv.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> +2 <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F</span><span class="st">&#39;,&#39;</span> <span class="st">&#39;{print $6}&#39;</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="at">-c</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-nr</span> </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>177459 EW EMER.
+119456 EU OBSERVATION
+84437 OBSERVATION ADMIT
+54929 URGENT
+42898 SURGICAL SAME DAY ADMISSION
+24551 DIRECT OBSERVATION
+21973 DIRECT EMER.
+13130 ELECTIVE
+7195 AMBULATORY OBSERVATION</code></pre>
+</div>
+</div>
+<p><strong>Solution</strong>: <code>admission_location</code> We observe that the possible values for <code>admission_location</code> are: <code>EMERGENCY ROOM</code>, <code>PHYSICIAN REFERRAL</code>, <code>TRANSFER FROM HOSPITAL</code>, <code>WALK-IN/SELF REFERRAL</code>, <code>CLINIC REFERRAL</code>, <code>PROCEDURE SITE</code>, <code>TRANSFER FROM SKILLED NURSING FACILITY</code>, <code>INTERNAL TRANSFER TO OR FROM PSYCH</code>, <code>PACU</code>, <code>INFORMATION NOT AVAILABLE</code>, <code>AMBULATORY SURGERY TRANSFER</code>, and <code></code> (a singular blank entry). Frequencies for each unique value are displayed below, in descending order:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zcat</span> <span class="op">&lt;</span> ~/mimic/hosp/admissions.csv.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> +2 <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F</span><span class="st">&#39;,&#39;</span> <span class="st">&#39;{print $8}&#39;</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="at">-c</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-nr</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>244179 EMERGENCY ROOM
+163228 PHYSICIAN REFERRAL
+56227 TRANSFER FROM HOSPITAL
+42365 WALK-IN/SELF REFERRAL
+12965 CLINIC REFERRAL
+8518 PROCEDURE SITE
+6317 TRANSFER FROM SKILLED NURSING FACILITY
+5837 INTERNAL TRANSFER TO OR FROM PSYCH
+5734 PACU
+ 402 INFORMATION NOT AVAILABLE
+ 255 AMBULATORY SURGERY TRANSFER
+   1 </code></pre>
+</div>
+</div>
+<p><strong>Solution</strong>: <code>insurance</code> We observe that the possible values for <code>insurance</code> are: <code>Medicare</code>, <code>Private</code>, <code>Medicaid</code>, <code>Other</code>, <code></code> (blank entry), and <code>No charge</code>. Frequences for each unique value are displayed below, in descending order:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zcat</span> <span class="op">&lt;</span> ~/mimic/hosp/admissions.csv.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> +2 <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F</span><span class="st">&#39;,&#39;</span> <span class="st">&#39;{print $10}&#39;</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="at">-c</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-nr</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>244576 Medicare
+173399 Private
+104229 Medicaid
+14006 Other
+9355 
+ 463 No charge</code></pre>
+</div>
+</div>
+<p><strong>Solution</strong>: <code>race</code> We observe that the possible values for <code>race</code> are <code>WHITE - RUSSIAN</code>, <code>WHITE - OTHER EUROPEAN</code>, <code>WHITE - EASTERN EUROPEAN</code>, <code>WHITE - BRAZILIAN</code>, <code>WHITE</code>, <code>UNKNOWN</code>, <code>UNABLE TO OBTAIN</code>, <code>SOUTH AMERICAN</code>, <code>PORTUGUESE</code>, <code>PATIENT DECLINED TO ANSWER</code>, <code>OTHER</code>, <code>NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER</code>, <code>MULTIPLE RACE/ETHNICITY</code>, <code>HISPANIC/LATINO - SALVADORAN</code>, <code>HISPANIC/LATINO - PUERTO RICAN</code>, <code>HISPANIC/LATINO - MEXICAN</code>, <code>HISPANIC/LATINO - HONDURAN</code>, <code>HISPANIC/LATINO - GUATEMALAN</code>, <code>HISPANIC/LATINO - DOMINICAN</code>, <code>HISPANIC/LATINO - CUBAN</code>, <code>HISPANIC/LATINO - COLUMBIAN</code>, <code>HISPANIC/LATINO - CENTRAL AMERICAN</code>, <code>HISPANIC OR LATINO</code>, <code>BLACK/CARIBBEAN ISLAND</code>, <code>BLACK/CAPE VERDEAN</code>, <code>BLACK/AFRICAN AMERICAN</code>, <code>BLACK/AFRICAN</code>, <code>ASIAN - SOUTH EAST ASIAN</code>, <code>ASIAN - KOREAN</code>, <code>ASIAN - CHINESE</code>, <code>ASIAN - ASIAN INDIAN</code>, <code>ASIAN</code>, <code>AMERICAN INDIAN/ALASKA NATIVE</code>. Frequencies for each unique value are displayed below, in descending order.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zcat</span> <span class="op">&lt;</span> ~/mimic/hosp/admissions.csv.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> +2 <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F</span><span class="st">&#39;,&#39;</span> <span class="st">&#39;{print $13}&#39;</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-nr</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>WHITE - RUSSIAN
+WHITE - OTHER EUROPEAN
+WHITE - EASTERN EUROPEAN
+WHITE - BRAZILIAN
+WHITE
+UNKNOWN
+UNABLE TO OBTAIN
+SOUTH AMERICAN
+PORTUGUESE
+PATIENT DECLINED TO ANSWER
+OTHER
+NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER
+MULTIPLE RACE/ETHNICITY
+HISPANIC/LATINO - SALVADORAN
+HISPANIC/LATINO - PUERTO RICAN
+HISPANIC/LATINO - MEXICAN
+HISPANIC/LATINO - HONDURAN
+HISPANIC/LATINO - GUATEMALAN
+HISPANIC/LATINO - DOMINICAN
+HISPANIC/LATINO - CUBAN
+HISPANIC/LATINO - COLUMBIAN
+HISPANIC/LATINO - CENTRAL AMERICAN
+HISPANIC OR LATINO
+BLACK/CARIBBEAN ISLAND
+BLACK/CAPE VERDEAN
+BLACK/AFRICAN AMERICAN
+BLACK/AFRICAN
+ASIAN - SOUTH EAST ASIAN
+ASIAN - KOREAN
+ASIAN - CHINESE
+ASIAN - ASIAN INDIAN
+ASIAN
+AMERICAN INDIAN/ALASKA NATIVE</code></pre>
+</div>
+</div>
+<ol start="7" type="1">
 <li><p>The <code>icusays.csv.gz</code> file contains all the ICU stays during the study period. How many ICU stays, identified by <code>stay_id</code>, are in this data file? How many unique patients, identified by <code>subject_id</code>, are in this data file?</p></li>
 <li><p><em>To compress, or not to compress. That’s the question.</em> Let’s focus on the big data file <code>labevents.csv.gz</code>. Compare compressed gz file size to the uncompressed file size. Compare the run times of <code>zcat &lt; ~/mimic/labevents.csv.gz | wc -l</code> versus <code>wc -l labevents.csv</code>. Discuss the trade off between storage and speed for big data files. (Hint: <code>gzip -dk &lt; FILENAME.gz &gt; ./FILENAME</code>. Remember to delete the large <code>labevents.csv</code> file after the exercise.)</p></li>
 </ol>
@@ -3349,39 +3435,39 @@ drwxr-xr-x  12 amaanjsattar  staff    384 Jan 14 19:14 icu
 <li>You and your friend just have finished reading <em>Pride and Prejudice</em> by Jane Austen. Among the four main characters in the book, Elizabeth, Jane, Lydia, and Darcy, your friend thinks that Darcy was the most mentioned. You, however, are certain it was Elizabeth. Obtain the full text of the novel from <a href="http://www.gutenberg.org/cache/epub/42671/pg42671.txt" class="uri">http://www.gutenberg.org/cache/epub/42671/pg42671.txt</a> and save to your local folder.</li>
 </ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Explain what <code>wget -nc</code> does. Do <strong>not</strong> put this text file <code>pg42671.txt</code> in Git. Complete the following loop to tabulate the number of times each of the four characters is mentioned using Linux commands.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> char <span class="kw">in</span> Elizabeth Jane Lydia Darcy</span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="cf">do</span></span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>  <span class="bu">echo</span> <span class="va">$char</span>:</span>
-<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># some bash commands here</span></span>
-<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> char <span class="kw">in</span> Elizabeth Jane Lydia Darcy</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="cf">do</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  <span class="bu">echo</span> <span class="va">$char</span>:</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># some bash commands here</span></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <ol start="2" type="1">
 <li>What’s the difference between the following two commands?</li>
 </ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;hello, world&#39;</span> <span class="op">&gt;</span> test1.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;hello, world&#39;</span> <span class="op">&gt;</span> test1.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>and</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;hello, world&#39;</span> <span class="op">&gt;&gt;</span> test2.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;hello, world&#39;</span> <span class="op">&gt;&gt;</span> test2.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <ol start="3" type="1">
 <li>Using your favorite text editor (e.g., <code>vi</code>), type the following and save the file as <code>middle.sh</code>:</li>
 </ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/bin/sh</span></span>
-<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Select lines from the middle of a file.</span></span>
-<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Usage: bash middle.sh filename end_line num_lines</span></span>
-<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span> <span class="at">-n</span> <span class="st">&quot;</span><span class="va">$2</span><span class="st">&quot;</span> <span class="st">&quot;</span><span class="va">$1</span><span class="st">&quot;</span> <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> <span class="st">&quot;</span><span class="va">$3</span><span class="st">&quot;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/bin/sh</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Select lines from the middle of a file.</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Usage: bash middle.sh filename end_line num_lines</span></span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span> <span class="at">-n</span> <span class="st">&quot;</span><span class="va">$2</span><span class="st">&quot;</span> <span class="st">&quot;</span><span class="va">$1</span><span class="st">&quot;</span> <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> <span class="st">&quot;</span><span class="va">$3</span><span class="st">&quot;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Using <code>chmod</code> to make the file executable by the owner, and run</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./middle.sh</span> pg42671.txt 20 5</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./middle.sh</span> pg42671.txt 20 5</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Explain the output. Explain the meaning of <code>&quot;$1&quot;</code>, <code>&quot;$2&quot;</code>, and <code>&quot;$3&quot;</code> in this shell script. Why do we need the first line of the shell script?</p>
 </section>

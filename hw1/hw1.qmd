@@ -166,13 +166,29 @@ We observe that the possible values for `insurance` are: `Medicare`, `Private`, 
 zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $10}' | sort | uniq -c | sort -nr
 ```
 **Solution**: `race`
-We observe that the possible values for `race` are `WHITE - RUSSIAN`, `WHITE - OTHER EUROPEAN`, `WHITE - EASTERN EUROPEAN`, `WHITE - BRAZILIAN`, `WHITE`, `UNKNOWN`, `UNABLE TO OBTAIN`, `SOUTH AMERICAN`, `PORTUGUESE`, `PATIENT DECLINED TO ANSWER`, `OTHER`, `NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER`, `MULTIPLE RACE/ETHNICITY`, `HISPANIC/LATINO - SALVADORAN`, `HISPANIC/LATINO - PUERTO RICAN`, `HISPANIC/LATINO - MEXICAN`, `HISPANIC/LATINO - HONDURAN`, `HISPANIC/LATINO - GUATEMALAN`, `HISPANIC/LATINO - DOMINICAN`, `HISPANIC/LATINO - CUBAN`, `HISPANIC/LATINO - COLUMBIAN`, `HISPANIC/LATINO - CENTRAL AMERICAN`, `HISPANIC OR LATINO`, `BLACK/CARIBBEAN ISLAND`, `BLACK/CAPE VERDEAN`, `BLACK/AFRICAN AMERICAN`, `BLACK/AFRICAN`, `ASIAN - SOUTH EAST ASIAN`, `ASIAN - KOREAN`, `ASIAN - CHINESE`, `ASIAN - ASIAN INDIAN`, `ASIAN`, `AMERICAN INDIAN/ALASKA NATIVE`. Frequencies for each unique value are displayed below, in descending order. 
+We observe that the possible values for `race` are `WHITE - RUSSIAN`, `WHITE - OTHER EUROPEAN`, `WHITE - EASTERN EUROPEAN`, `WHITE - BRAZILIAN`, `WHITE`, `UNKNOWN`, `UNABLE TO OBTAIN`, `SOUTH AMERICAN`, `PORTUGUESE`, `PATIENT DECLINED TO ANSWER`, `OTHER`, `NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER`, `MULTIPLE RACE/ETHNICITY`, `HISPANIC/LATINO - SALVADORAN`, `HISPANIC/LATINO - PUERTO RICAN`, `HISPANIC/LATINO - MEXICAN`, `HISPANIC/LATINO - HONDURAN`, `HISPANIC/LATINO - GUATEMALAN`, `HISPANIC/LATINO - DOMINICAN`, `HISPANIC/LATINO - CUBAN`, `HISPANIC/LATINO - COLUMBIAN`, `HISPANIC/LATINO - CENTRAL AMERICAN`, `HISPANIC OR LATINO`, `BLACK/CARIBBEAN ISLAND`, `BLACK/CAPE VERDEAN`, `BLACK/AFRICAN AMERICAN`, `BLACK/AFRICAN`, `ASIAN - SOUTH EAST ASIAN`, `ASIAN - KOREAN`, `ASIAN - CHINESE`, `ASIAN - ASIAN INDIAN`, `ASIAN`, and `AMERICAN INDIAN/ALASKA NATIVE`. Frequencies for each unique value are displayed below, in descending order. 
 
 ```{bash} 
 zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $13}' | sort | uniq | sort -nr
 ```
 
-7. The `icusays.csv.gz` file contains all the ICU stays during the study period. How many ICU stays, identified by `stay_id`, are in this data file? How many unique patients, identified by `subject_id`, are in this data file?
+7. The `icustays.csv.gz` file contains all the ICU stays during the study period. How many ICU stays, identified by `stay_id`, are in this data file? How many unique patients, identified by `subject_id`, are in this data file?
+
+**Solution**: Total ICU Stays in `icustays.csv.gz`
+First, we will examine the first few rows of the file, including the header to determine the column numbers for `stay_id` and `subject_id`:
+
+```{bash}
+zless < ~/mimic/icu/icustays.csv.gz | head -n 5
+```
+Next, we will count the total entries in the `stay_id` column to determine the total number of ICU stays:
+```{bash}
+zcat < ~/mimic/icu/icustays.csv.gz | tail -n +2 | awk -F',' '{print $3}' | wc -l
+```
+Next, we will count the total **unique** entries in the `subject_id` column to determine the total number of unique patients:
+```{bash}
+zcat < ~/mimic/icu/icustays.csv.gz | tail -n +2 | awk -F',' '{print $1}' | sort | uniq |  wc -l
+```
+We observe that there are 94,458 unique ICU stays in the file and 65,366 unique patients in the file.
 
 8. _To compress, or not to compress. That's the question._ Let's focus on the big data file `labevents.csv.gz`. Compare compressed gz file size to the uncompressed file size. Compare the run times of `zcat < ~/mimic/labevents.csv.gz | wc -l` versus `wc -l labevents.csv`. Discuss the trade off between storage and speed for big data files. (Hint: `gzip -dk < FILENAME.gz > ./FILENAME`. Remember to delete the large `labevents.csv` file after the exercise.)
 
