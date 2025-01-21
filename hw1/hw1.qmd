@@ -27,15 +27,23 @@ sessionInfo()
 
 1. Apply for the [Student Developer Pack](https://education.github.com/pack) at GitHub using your UCLA email. You'll get GitHub Pro account for free (unlimited public and private repositories).
 
+**Solution**: Done.
+
 2. Create a **private** repository `biostat-203b-2025-winter` and add `Hua-Zhou` and TA team (`Tomoki-Okuno` for Lec 1; `parsajamshidian` and `BowenZhang2001` for Lec 82) as your collaborators with write permission.
+
+**Solution**: My private GitHub repository has been created, and the specified collaborators have been added with accompanying permissions.
 
 3. Top directories of the repository should be `hw1`, `hw2`, ... Maintain two branches `main` and `develop`. The `develop` branch will be your main playground, the place where you develop solution (code) to homework problems and write up report. The `main` branch will be your presentation area. Submit your homework files (Quarto file `qmd`, `html` file converted by Quarto, all code and extra data sets to reproduce results) in the `main` branch.
 
+**Solution**: I have created a 'hw1' directory and am actively maintaining two branches: 'main' and 'develop'. While working through homework assignments, I operate in the 'develop' branch, and I will merge the changes with the 'main' branch upon successful completion. The 'qmd' and rendered 'html' files are present in my 'hw1' directory, and any necessary additional files will be similarly present in 'main'. 
+
 4. After each homework due date, course reader and instructor will check out your `main` branch for grading. Tag each of your homework submissions with tag names `hw1`, `hw2`, ... Tagging time will be used as your submission time. That means if you tag your `hw1` submission after deadline, penalty points will be deducted for late submission.
+
+**Solution**: I will tag my homework submissions with the provided tag names to timestamp my assignments.
 
 5. After this course, you can make this repository public and use it to demonstrate your skill sets on job market.
 
-**Solution**: Done. 
+**Solution**: I will publicize this repository at the close of this course to demonstrate my acquired skill set.
 
 ## Q2. Data ethics training
 
@@ -55,6 +63,8 @@ ls -l ~/mimic/
 Refer to the documentation <https://physionet.org/content/mimiciv/3.1/> for details of data files. Do **not** put these data files into Git; they are big. Do **not** copy them into your directory. Do **not** decompress the gz data files. These create unnecessary big files and are not big-data-friendly practices. Read from the data folder `~/mimic` directly in following exercises. 
 
   Use Bash commands to answer following questions.
+  
+**Solution**: I have downloaded the MIMIC-IV v3.1 data, and it is available at the specified location '~/mimic'. I have examined the file structure and adhered to all guidelines mentioned. 
 
 2. Display the contents in the folders `hosp` and `icu` using Bash command `ls -l`. Why are these data files distributed as `.csv.gz` files instead of `.csv` (comma separated values) files? Read the page <https://mimic.mit.edu/docs/iv/> to understand what's in each folder.
 
