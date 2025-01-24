@@ -81,7 +81,9 @@ We observe that the data files are compressed, existing in `csv.gz` rather than 
 
 3. Briefly describe what Bash commands `zcat`, `zless`, `zmore`, and `zgrep` do.
 
-**Solution** `zcat`: This command outputs the uncompressed content of a `.gz` compressed file to a user's terminal without directly decompressing the file itself. This allows the user to view the contents of the file without directly modifying it through decompression, which can produce intermediate files that may not be necessary for the user's task at hand.
+**Solution**: 
+
+`zcat`: This command outputs the uncompressed content of a `.gz` compressed file to a user's terminal without directly decompressing the file itself. This allows the user to view the contents of the file without directly modifying it through decompression, which can produce intermediate files that may not be necessary for the user's task at hand.
 
 `zless`: This command outputs the uncompressed content of a `.gz` compressed file to a user's terminal in a paginated fashion. This allows the user to interact with and peruse the file contents at their leisure. This command is often useful in the context of manual file exploration.
 
@@ -99,7 +101,9 @@ do
   ls -l $datafile
 done
 ```
-**Solution**: This bash script contains a `for loop`, which iterates through all the files in the `hosp` subfolder of our `mimic` dataset that match our specified criteria. We are ultimately returning a list of files in `long list` format, via the `ls -l` command. This returns one line per file, including the following information: file permissions, owner and group, file size (bytes), date of last modification, and filename. In this case, we specify patterns to identify in the filenames. The bracketed segment is referred to as an `expansion`, allowing us to specify different starting strings for different patters. The asterisk is a `wildcard` character, matching zero or more characters in our filenames. Lastly, we specify that our filename should conclude with a `.gz`. Essentially, the script will return the listed names of files in the hospital subfolder that end with `.gz` and start with either `a`,`l`, or `pa`. We can see that this will return the `admissions`, `labevents`, and  `patients` files.
+**Solution**: 
+
+This bash script contains a `for loop`, which iterates through all the files in the `hosp` subfolder of our `mimic` dataset that match our specified criteria. We are ultimately returning a list of files in `long list` format, via the `ls -l` command. This returns one line per file, including the following information: file permissions, owner and group, file size (bytes), date of last modification, and filename. In this case, we specify patterns to identify in the filenames. The bracketed segment is referred to as an `expansion`, allowing us to specify different starting strings for different patters. The asterisk is a `wildcard` character, matching zero or more characters in our filenames. Lastly, we specify that our filename should conclude with a `.gz`. Essentially, the script will return the listed names of files in the hospital subfolder that end with `.gz` and start with either `a`,`l`, or `pa`. We can see that this will return the `admissions`, `labevents`, and  `patients` files.
 
 Display the number of lines in each data file using a similar loop. (Hint: combine linux commands `zcat <` and `wc -l`.)
 
@@ -137,7 +141,7 @@ uniq |
 wc -l
 
 ```
-**Solution** How many unique patients (identified by `subject_id`) are in this data file?
+**Solution**: How many unique patients (identified by `subject_id`) are in this data file?
 ```{bash}
 
 zcat < ~/mimic/hosp/admissions.csv.gz |
@@ -147,7 +151,8 @@ sort |
 uniq | 
 wc -l
 ```
-**Solution** Compare the number of unique patients in `admissions.csv.gz` to the number of unique patients in `patients.csv.gz`. 
+**Solution**: Compare the number of unique patients in `admissions.csv.gz` to the number of unique patients in `patients.csv.gz`. 
+
 First, we glance at the first few lines of the file.
 ```{bash} 
 zless < ~/mimic/hosp/patients.csv.gz | head -n 5
@@ -166,6 +171,7 @@ We observe that there are 223,452 patients in the `admissions.csv.gz`, and 364,6
 6. What are the possible values taken by each of the variable `admission_type`, `admission_location`, `insurance`, and `ethnicity`? Also report the count for each unique value of these variables in decreasing order. (Hint: combine Linux commands `zcat`, `head`/`tail`, `awk`, `uniq -c`, `wc`, `sort`, and so on; skip the header line.)
 
 **Solution**:  `admission_type`
+
 We observe that the possible values for `admission_type` are: `EW EMER.`, `EU OBSERVATION`, `OBSERVATION ADMIT`, `URGENT`, `SURGICAL SAME DAY ADMISSION`, `DIRECT OBSERVATION`, `DIRECT EMER.`, `ELECTIVE`, and `AMBULATORY OBSERVATION`. Frequencies for each unique value are displayed below, in descending order:
 ```{bash}
 zcat < ~/mimic/hosp/admissions.csv.gz | 
@@ -176,6 +182,7 @@ uniq -c |
 sort -nr 
 ```
 **Solution**: `admission_location`
+
 We observe that the possible values for `admission_location` are: `EMERGENCY ROOM`, `PHYSICIAN REFERRAL`, `TRANSFER FROM HOSPITAL`, `WALK-IN/SELF REFERRAL`, `CLINIC REFERRAL`, `PROCEDURE SITE`, `TRANSFER FROM SKILLED NURSING FACILITY`, `INTERNAL TRANSFER TO OR FROM PSYCH`, `PACU`, `INFORMATION NOT AVAILABLE`, `AMBULATORY SURGERY TRANSFER`, and ` ` (a singular blank entry). Frequencies for each unique value are displayed below, in descending order:
 
 ```{bash}
@@ -187,6 +194,7 @@ uniq -c |
 sort -nr
 ```
 **Solution**: `insurance`
+
 We observe that the possible values for `insurance` are: `Medicare`, `Private`, `Medicaid`, `Other`, ` ` (blank entry), and `No charge`. Frequences for each unique value are displayed below, in descending order:
 
 ```{bash}
@@ -198,6 +206,7 @@ uniq -c |
 sort -nr
 ```
 **Solution**: `race`
+
 We observe that the possible values for `race` are `WHITE - RUSSIAN`, `WHITE - OTHER EUROPEAN`, `WHITE - EASTERN EUROPEAN`, `WHITE - BRAZILIAN`, `WHITE`, `UNKNOWN`, `UNABLE TO OBTAIN`, `SOUTH AMERICAN`, `PORTUGUESE`, `PATIENT DECLINED TO ANSWER`, `OTHER`, `NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER`, `MULTIPLE RACE/ETHNICITY`, `HISPANIC/LATINO - SALVADORAN`, `HISPANIC/LATINO - PUERTO RICAN`, `HISPANIC/LATINO - MEXICAN`, `HISPANIC/LATINO - HONDURAN`, `HISPANIC/LATINO - GUATEMALAN`, `HISPANIC/LATINO - DOMINICAN`, `HISPANIC/LATINO - CUBAN`, `HISPANIC/LATINO - COLUMBIAN`, `HISPANIC/LATINO - CENTRAL AMERICAN`, `HISPANIC OR LATINO`, `BLACK/CARIBBEAN ISLAND`, `BLACK/CAPE VERDEAN`, `BLACK/AFRICAN AMERICAN`, `BLACK/AFRICAN`, `ASIAN - SOUTH EAST ASIAN`, `ASIAN - KOREAN`, `ASIAN - CHINESE`, `ASIAN - ASIAN INDIAN`, `ASIAN`, and `AMERICAN INDIAN/ALASKA NATIVE`. Frequencies for each unique value are displayed below, in descending order. 
 
 ```{bash} 
@@ -212,6 +221,7 @@ sort -nr
 7. The `icustays.csv.gz` file contains all the ICU stays during the study period. How many ICU stays, identified by `stay_id`, are in this data file? How many unique patients, identified by `subject_id`, are in this data file?
 
 **Solution**: Total ICU Stays in `icustays.csv.gz`
+
 First, we will examine the first few rows of the file, including the header to determine the column numbers for `stay_id` and `subject_id`:
 
 ```{bash}
@@ -238,6 +248,7 @@ We observe that there are 94,458 unique ICU stays in the file and 65,366 unique 
 8. _To compress, or not to compress. That's the question._ Let's focus on the big data file `labevents.csv.gz`. Compare compressed gz file size to the uncompressed file size. Compare the run times of `zcat < ~/mimic/labevents.csv.gz | wc -l` versus `wc -l labevents.csv`. Discuss the trade off between storage and speed for big data files. (Hint: `gzip -dk < FILENAME.gz > ./FILENAME`. Remember to delete the large `labevents.csv` file after the exercise.)
 
 **Solution**: Compressed vs. Uncompressed
+
 First, we will compare the file sizes for the compressed and uncompressed versions of `labevents.csv.gz`. To check the file size for the compressed file, we run the following: 
 
 ```{bash} 
@@ -291,15 +302,10 @@ done
 ```
 
 **Solution** Pride and Prejudice
+
 We utilize `wget` to download files from the web via our bash chunk or command line. This allows us to non-interactively download a web-based file locally. The `-nc` specification stands for `no clobber` and it prevents any redownloading of the file if it already exists in our directory. Hence, if the file is identified to be present in the directory already, this specification ensures that the file is not retrieved an additional time. 
 We complete the loop above, which tabulates the number of times each of the four characters is mentioned using our Linux commands. It appears that our friend was incorrect about Darcy being the most mentioned character in the book. We were correct in our assertion that Elizabeth is the character mentioned by name most, at 634 times compared to Darcy's 416 times. 
 
-Now that we have completed this part of the exercise, we can delete the file locally:
-```{bash}
-#| eval: false
-rm pg42671.txt
-
-```
 2. What's the difference between the following two commands?
 ```{bash}
 #| eval: false
@@ -311,6 +317,7 @@ and
 echo 'hello, world' >> test2.txt
 ```
 **Solution** Difference Between Commands
+
 The first command writes `hello, world` to a file called `test1.txt`. It creates the file if it does not already exist. If the file does exist, this command overwrites its contents, replacing anything prior with `hello, world`. In contrast, the second command appends `hello, world` to a file called `test2.txt`. If the file does not already exist, it creates the file and writes `hello, world` as its contents. If the file already exists and is populated with written content, then it adds `hello, world` at the end of the file and preserves the preexisting contents. This subtle difference can be illustrated by running both cells above multiple times. Notice that after running the bash commands several times and opening each file, `test1.txt` will still be a one-line file with its only contents being the specified `hello, world` message. Meanwhile, `test2.txt` will have a `hello, world` line for each time the bash code was run. Ultimately, this illustrates the difference between overwriting preexisting content and appending it with new content. 
 
 3. Using your favorite text editor (e.g., `vi`), type the following and save the file as `middle.sh`:
@@ -326,6 +333,10 @@ Using `chmod` to make the file executable by the owner, and run
 ./middle.sh pg42671.txt 20 5
 ```
 Explain the output. Explain the meaning of `"$1"`, `"$2"`, and `"$3"` in this shell script. Why do we need the first line of the shell script?
+
+**Solution** middle.sh
+
+We see that the output of running our script with the provided parameter values is the release date and language of the book. The script took `pg42671.txt` as its input, reads the first 20 lines of the file, then keeps the last 5 lines from this set. The `"$1"`, `"$2"`, and `"$3"` in our shell script serve as `positional parameters` that are passed to the script when it is run. In our case, these correspond to the arguments we provided above. Namely, `"$1"` pertains to the name of the file we aim to process (in this case, `pg42671.txt`), `"$2"` pertains to the number of lines we extract from the file's beginning in our initial output via `head`. In this case, we select the first 20 lines of the file. Lastly, `"$3"` pertains to the number of lines from our 20-line selection we ultimately extract, starting at the end of the file. In our case, we extract the last 5 lines from the end of our 20-line selection. In summary, the process is as follows: process `pg42671.txt` as our chosen file -> get the first 20 lines from the file -> output the last five lines of this 20-line selection. The first line of the shell script reads `#!/bin/sh`. This character sequence is known as a `shebang` or `hashbang`, and it tells a Unix-like operating system which interpreter to use when executing our script. When running the script, the operating system looks for the shebang line and utilizes the specified interpreter or command to execute our script. This ultimately ensures correct interpretation of our bash script, such that it will do what we want it to do. 
 
 ## Q5. More fun with Linux
 
