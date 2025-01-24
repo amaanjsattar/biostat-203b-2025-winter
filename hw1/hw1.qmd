@@ -192,6 +192,37 @@ We observe that there are 94,458 unique ICU stays in the file and 65,366 unique 
 
 8. _To compress, or not to compress. That's the question._ Let's focus on the big data file `labevents.csv.gz`. Compare compressed gz file size to the uncompressed file size. Compare the run times of `zcat < ~/mimic/labevents.csv.gz | wc -l` versus `wc -l labevents.csv`. Discuss the trade off between storage and speed for big data files. (Hint: `gzip -dk < FILENAME.gz > ./FILENAME`. Remember to delete the large `labevents.csv` file after the exercise.)
 
+**Solution**: Compressed vs. Uncompressed
+First, we will compare the file sizes for the compressed and uncompressed versions of `labevents.csv.gz`. To check the file size for the compressed file, we run the following: 
+
+```{bash} 
+ls -lh ~/mimic/hosp/labevents.csv.gz
+
+```
+To check the file size for the uncompressed file, we must decompress the file and then list details. We will use the `-dk` option to specify that we wish to keep the original file instead of deleting it. We run the following:
+```{bash}
+gzip -dk < ~/mimic/hosp/labevents.csv.gz > ~/mimic/hosp/labevents.csv
+```
+
+Now we will check the file size: 
+```{bash}
+ls -lh ~/mimic/hosp/labevents.csv
+```
+We observe that the compressed file size is 2.4 Gb, while the uncompressed file size is 17 Gb. This is a monumental difference in required storage. We will proceed to check the runtimes for counting lines of the compressed versus uncompressed file. Beginning with the compressed file, we run the following: 
+```{bash}
+time zcat < ~/mimic/hosp/labevents.csv.gz | wc -l
+```
+Now, we wil check the runtime for counting the lines of our uncompressed csv file. We run the following: 
+```{bash} 
+time wc -l ~/mimic/hosp/labevents.csv
+```
+We observe that counting the lines in the compressed file took approximately 1.5 minutes (1 minute and 29.706 seconds at the time this was written, to be exact). Meanwhile, counting the lines in the uncompressed file took approximately 23 seconds (22.678 seconds at the time this was written, to be exact). This means that this same operation performed on the uncompressed file was nearly four times faster, which can be attributed to the fact that we do not need to complete the intermediary step of running `zcat` to display the uncompressed file contents before word counting. CLearly, there is a tradeoff between storage and speed when working with large data files. Uncompressing large files can be costly in terms of storage, but it allows for faster runtimes on processes involving said files. Conversely, working with compressed files can be less costly from a storage perspective, but operations pertaining to the uncompressed contents of the file will rely on the aforementioned intermediary step, increasing runtime. The choice of whether or not to compress files will vary based on the user's resource availability, patience, and value judgement. For users with limited storage capacity (i.e. users who download all data locally), it is likely that the slower runtime may be preferable to downloading extremely large files locally without the storage capacity for them. For users who may need to perform more sophisticated operations on unzipped files, it may be a worthwhile tradeoff to uncompress files and operate on them directly at the expense of some storage space. Similarly, if a file is only to be used once in a particular pipeline, it may be preferable to work with a compressed version as it is a 'one-time' lag in runtime. However, if the file is of central importance in the overarching endeavor, utilizing an uncompressed version may greatly improve the total runtime at multiple points throughout the pipeline. Ultimately, the decision to compress a file should be made in thorough consideration of its utility in fulfilling user goals and the user's own storage reserves. 
+
+Now that we have concluded this exercise, we will delete the uncompressed file. We run the following: 
+```{bash}
+rm ~/mimic/hosp/labevents.csv
+```
+
 ## Q4. Who's popular in Price and Prejudice
 
 1. You and your friend just have finished reading *Pride and Prejudice* by Jane Austen. Among the four main characters in the book, Elizabeth, Jane, Lydia, and Darcy, your friend thinks that Darcy was the most mentioned. You, however, are certain it was Elizabeth. Obtain the full text of the novel from <http://www.gutenberg.org/cache/epub/42671/pg42671.txt> and save to your local folder. 
