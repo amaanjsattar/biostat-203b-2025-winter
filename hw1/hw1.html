@@ -3197,7 +3197,7 @@ loaded via a namespace (and not attached):
 -rw-r--r--@  1 amaanjsattar  staff  15199 Oct 10 13:29 CHANGELOG.txt
 -rw-r--r--   1 amaanjsattar  staff   2518 Oct 10 14:30 LICENSE.txt
 -rw-r--r--   1 amaanjsattar  staff   2884 Oct 11 14:55 SHA256SUMS.txt
-drwxr-xr-x  25 amaanjsattar  staff    800 Jan 14 16:33 hosp
+drwxr-xr-x  25 amaanjsattar  staff    800 Jan 23 19:41 hosp
 drwxr-xr-x  12 amaanjsattar  staff    384 Jan 14 19:14 icu
 -rw-r--r--@  1 amaanjsattar  staff    789 Jan 14 12:16 index.html</code></pre>
 </div>
@@ -3385,7 +3385,7 @@ drwxr-xr-x  12 amaanjsattar  staff    384 Jan 14 19:14 icu
  463 No charge</code></pre>
 </div>
 </div>
-<p><strong>Solution</strong>: <code>race</code> We observe that the possible values for <code>race</code> are <code>WHITE - RUSSIAN</code>, <code>WHITE - OTHER EUROPEAN</code>, <code>WHITE - EASTERN EUROPEAN</code>, <code>WHITE - BRAZILIAN</code>, <code>WHITE</code>, <code>UNKNOWN</code>, <code>UNABLE TO OBTAIN</code>, <code>SOUTH AMERICAN</code>, <code>PORTUGUESE</code>, <code>PATIENT DECLINED TO ANSWER</code>, <code>OTHER</code>, <code>NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER</code>, <code>MULTIPLE RACE/ETHNICITY</code>, <code>HISPANIC/LATINO - SALVADORAN</code>, <code>HISPANIC/LATINO - PUERTO RICAN</code>, <code>HISPANIC/LATINO - MEXICAN</code>, <code>HISPANIC/LATINO - HONDURAN</code>, <code>HISPANIC/LATINO - GUATEMALAN</code>, <code>HISPANIC/LATINO - DOMINICAN</code>, <code>HISPANIC/LATINO - CUBAN</code>, <code>HISPANIC/LATINO - COLUMBIAN</code>, <code>HISPANIC/LATINO - CENTRAL AMERICAN</code>, <code>HISPANIC OR LATINO</code>, <code>BLACK/CARIBBEAN ISLAND</code>, <code>BLACK/CAPE VERDEAN</code>, <code>BLACK/AFRICAN AMERICAN</code>, <code>BLACK/AFRICAN</code>, <code>ASIAN - SOUTH EAST ASIAN</code>, <code>ASIAN - KOREAN</code>, <code>ASIAN - CHINESE</code>, <code>ASIAN - ASIAN INDIAN</code>, <code>ASIAN</code>, <code>AMERICAN INDIAN/ALASKA NATIVE</code>. Frequencies for each unique value are displayed below, in descending order.</p>
+<p><strong>Solution</strong>: <code>race</code> We observe that the possible values for <code>race</code> are <code>WHITE - RUSSIAN</code>, <code>WHITE - OTHER EUROPEAN</code>, <code>WHITE - EASTERN EUROPEAN</code>, <code>WHITE - BRAZILIAN</code>, <code>WHITE</code>, <code>UNKNOWN</code>, <code>UNABLE TO OBTAIN</code>, <code>SOUTH AMERICAN</code>, <code>PORTUGUESE</code>, <code>PATIENT DECLINED TO ANSWER</code>, <code>OTHER</code>, <code>NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER</code>, <code>MULTIPLE RACE/ETHNICITY</code>, <code>HISPANIC/LATINO - SALVADORAN</code>, <code>HISPANIC/LATINO - PUERTO RICAN</code>, <code>HISPANIC/LATINO - MEXICAN</code>, <code>HISPANIC/LATINO - HONDURAN</code>, <code>HISPANIC/LATINO - GUATEMALAN</code>, <code>HISPANIC/LATINO - DOMINICAN</code>, <code>HISPANIC/LATINO - CUBAN</code>, <code>HISPANIC/LATINO - COLUMBIAN</code>, <code>HISPANIC/LATINO - CENTRAL AMERICAN</code>, <code>HISPANIC OR LATINO</code>, <code>BLACK/CARIBBEAN ISLAND</code>, <code>BLACK/CAPE VERDEAN</code>, <code>BLACK/AFRICAN AMERICAN</code>, <code>BLACK/AFRICAN</code>, <code>ASIAN - SOUTH EAST ASIAN</code>, <code>ASIAN - KOREAN</code>, <code>ASIAN - CHINESE</code>, <code>ASIAN - ASIAN INDIAN</code>, <code>ASIAN</code>, and <code>AMERICAN INDIAN/ALASKA NATIVE</code>. Frequencies for each unique value are displayed below, in descending order.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb29"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zcat</span> <span class="op">&lt;</span> ~/mimic/hosp/admissions.csv.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> +2 <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F</span><span class="st">&#39;,&#39;</span> <span class="st">&#39;{print $13}&#39;</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="at">-nr</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
@@ -3425,9 +3425,72 @@ AMERICAN INDIAN/ALASKA NATIVE</code></pre>
 </div>
 </div>
 <ol start="7" type="1">
-<li><p>The <code>icusays.csv.gz</code> file contains all the ICU stays during the study period. How many ICU stays, identified by <code>stay_id</code>, are in this data file? How many unique patients, identified by <code>subject_id</code>, are in this data file?</p></li>
-<li><p><em>To compress, or not to compress. That’s the question.</em> Let’s focus on the big data file <code>labevents.csv.gz</code>. Compare compressed gz file size to the uncompressed file size. Compare the run times of <code>zcat &lt; ~/mimic/labevents.csv.gz | wc -l</code> versus <code>wc -l labevents.csv</code>. Discuss the trade off between storage and speed for big data files. (Hint: <code>gzip -dk &lt; FILENAME.gz &gt; ./FILENAME</code>. Remember to delete the large <code>labevents.csv</code> file after the exercise.)</p></li>
+<li>The <code>icustays.csv.gz</code> file contains all the ICU stays during the study period. How many ICU stays, identified by <code>stay_id</code>, are in this data file? How many unique patients, identified by <code>subject_id</code>, are in this data file?</li>
 </ol>
+<p><strong>Solution</strong>: Total ICU Stays in <code>icustays.csv.gz</code> First, we will examine the first few rows of the file, including the header to determine the column numbers for <code>stay_id</code> and <code>subject_id</code>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zless</span> <span class="op">&lt;</span> ~/mimic/icu/icustays.csv.gz <span class="kw">|</span> <span class="fu">head</span> <span class="at">-n</span> 5</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>subject_id,hadm_id,stay_id,first_careunit,last_careunit,intime,outtime,los
+10000032,29079034,39553978,Medical Intensive Care Unit (MICU),Medical Intensive Care Unit (MICU),2180-07-23 14:00:00,2180-07-23 23:50:47,0.4102662037037037
+10000690,25860671,37081114,Medical Intensive Care Unit (MICU),Medical Intensive Care Unit (MICU),2150-11-02 19:37:00,2150-11-06 17:03:17,3.8932523148148146
+10000980,26913865,39765666,Medical Intensive Care Unit (MICU),Medical Intensive Care Unit (MICU),2189-06-27 08:42:00,2189-06-27 20:38:27,0.4975347222222222
+10001217,24597018,37067082,Surgical Intensive Care Unit (SICU),Surgical Intensive Care Unit (SICU),2157-11-20 19:18:02,2157-11-21 22:08:00,1.1180324074074075</code></pre>
+</div>
+</div>
+<p>Next, we will count the total entries in the <code>stay_id</code> column to determine the total number of ICU stays:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zcat</span> <span class="op">&lt;</span> ~/mimic/icu/icustays.csv.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> +2 <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F</span><span class="st">&#39;,&#39;</span> <span class="st">&#39;{print $3}&#39;</span> <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   94458</code></pre>
+</div>
+</div>
+<p>Next, we will count the total <strong>unique</strong> entries in the <code>subject_id</code> column to determine the total number of unique patients:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">zcat</span> <span class="op">&lt;</span> ~/mimic/icu/icustays.csv.gz <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> +2 <span class="kw">|</span> <span class="fu">awk</span> <span class="at">-F</span><span class="st">&#39;,&#39;</span> <span class="st">&#39;{print $1}&#39;</span> <span class="kw">|</span> <span class="fu">sort</span> <span class="kw">|</span> <span class="fu">uniq</span> <span class="kw">|</span>  <span class="fu">wc</span> <span class="at">-l</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   65366</code></pre>
+</div>
+</div>
+<p>We observe that there are 94,458 unique ICU stays in the file and 65,366 unique patients in the file.</p>
+<ol start="8" type="1">
+<li><em>To compress, or not to compress. That’s the question.</em> Let’s focus on the big data file <code>labevents.csv.gz</code>. Compare compressed gz file size to the uncompressed file size. Compare the run times of <code>zcat &lt; ~/mimic/labevents.csv.gz | wc -l</code> versus <code>wc -l labevents.csv</code>. Discuss the trade off between storage and speed for big data files. (Hint: <code>gzip -dk &lt; FILENAME.gz &gt; ./FILENAME</code>. Remember to delete the large <code>labevents.csv</code> file after the exercise.)</li>
+</ol>
+<p><strong>Solution</strong>: Compressed vs. Uncompressed First, we will compare the file sizes for the compressed and uncompressed versions of <code>labevents.csv.gz</code>. To check the file size for the compressed file, we run the following:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-lh</span> ~/mimic/hosp/labevents.csv.gz</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>-rw-r--r--  1 amaanjsattar  staff   2.4G Oct  3 06:08 /Users/amaanjsattar/mimic/hosp/labevents.csv.gz</code></pre>
+</div>
+</div>
+<p>To check the file size for the uncompressed file, we must decompress the file and then list details. We will use the <code>-dk</code> option to specify that we wish to keep the original file instead of deleting it. We run the following:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gzip</span> <span class="at">-dk</span> <span class="op">&lt;</span> ~/mimic/hosp/labevents.csv.gz <span class="op">&gt;</span> ~/mimic/hosp/labevents.csv</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now we will check the file size:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ls</span> <span class="at">-lh</span> ~/mimic/hosp/labevents.csv</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We observe that the compressed file size is 2.4 Gb, while the uncompressed file size is 17 Gb. This is a monumental difference in required storage. We will proceed to check the runtimes for counting lines of the compressed versus uncompressed file. Beginning with the compressed file, we run the following:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="bu">time</span> zcat <span class="op">&lt;</span> ~/mimic/hosp/labevents.csv.gz <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code> 158374765
+
+real    1m29.548s
+user    1m48.087s
+sys 0m3.142s</code></pre>
+</div>
+</div>
+<p>Now, we wil check the runtime for counting the lines of our uncompressed csv file. We run the following:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="bu">time</span> wc <span class="at">-l</span> ~/mimic/hosp/labevents.csv</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We observe that counting the lines in the compressed file took approximately 1.5 minutes (1 minute and 29.706 seconds at the time this was written, to be exact). Meanwhile, counting the lines in the uncompressed file took approximately 23 seconds (22.678 seconds at the time this was written, to be exact). This means that this same operation performed on the uncompressed file was nearly four times faster, which can be attributed to the fact that we do not need to complete the intermediary step of running <code>zcat</code> to display the uncompressed file contents before word counting. CLearly, there is a tradeoff between storage and speed when working with large data files. Uncompressing large files can be costly in terms of storage, but it allows for faster runtimes on processes involving said files. Conversely, working with compressed files can be less costly from a storage perspective, but operations pertaining to the uncompressed contents of the file will rely on the aforementioned intermediary step, increasing runtime. The choice of whether or not to compress files will vary based on the user’s resource availability, patience, and value judgement. For users with limited storage capacity (i.e. users who download all data locally), it is likely that the slower runtime may be preferable to downloading extremely large files locally without the storage capacity for them. For users who may need to perform more sophisticated operations on unzipped files, it may be a worthwhile tradeoff to uncompress files and operate on them directly at the expense of some storage space. Similarly, if a file is only to be used once in a particular pipeline, it may be preferable to work with a compressed version as it is a ‘one-time’ lag in runtime. However, if the file is of central importance in the overarching endeavor, utilizing an uncompressed version may greatly improve the total runtime at multiple points throughout the pipeline. Ultimately, the decision to compress a file should be made in thorough consideration of its utility in fulfilling user goals and the user’s own storage reserves.</p>
+<p>Now that we have concluded this exercise, we will delete the uncompressed file. We run the following:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span> ~/mimic/hosp/labevents.csv</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 </section>
 <section id="q4.-whos-popular-in-price-and-prejudice" class="level2">
 <h2 class="anchored" data-anchor-id="q4.-whos-popular-in-price-and-prejudice">Q4. Who’s popular in Price and Prejudice</h2>
@@ -3435,39 +3498,45 @@ AMERICAN INDIAN/ALASKA NATIVE</code></pre>
 <li>You and your friend just have finished reading <em>Pride and Prejudice</em> by Jane Austen. Among the four main characters in the book, Elizabeth, Jane, Lydia, and Darcy, your friend thinks that Darcy was the most mentioned. You, however, are certain it was Elizabeth. Obtain the full text of the novel from <a href="http://www.gutenberg.org/cache/epub/42671/pg42671.txt" class="uri">http://www.gutenberg.org/cache/epub/42671/pg42671.txt</a> and save to your local folder.</li>
 </ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb45"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Explain what <code>wget -nc</code> does. Do <strong>not</strong> put this text file <code>pg42671.txt</code> in Git. Complete the following loop to tabulate the number of times each of the four characters is mentioned using Linux commands.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span>
-<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> char <span class="kw">in</span> Elizabeth Jane Lydia Darcy</span>
-<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a><span class="cf">do</span></span>
-<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  <span class="bu">echo</span> <span class="va">$char</span>:</span>
-<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># some bash commands here</span></span>
-<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">wget</span> <span class="at">-nc</span> http://www.gutenberg.org/cache/epub/42671/pg42671.txt</span>
+<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> char <span class="kw">in</span> Elizabeth Jane Lydia Darcy</span>
+<span id="cb46-3"><a href="#cb46-3" aria-hidden="true" tabindex="-1"></a><span class="cf">do</span></span>
+<span id="cb46-4"><a href="#cb46-4" aria-hidden="true" tabindex="-1"></a>  <span class="bu">echo</span> <span class="va">$char</span>:</span>
+<span id="cb46-5"><a href="#cb46-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">grep</span> <span class="at">-ow</span> <span class="st">&quot;</span><span class="va">$char</span><span class="st">&quot;</span> pg42671.txt <span class="kw">|</span> <span class="fu">wc</span> <span class="at">-l</span></span>
+<span id="cb46-6"><a href="#cb46-6" aria-hidden="true" tabindex="-1"></a><span class="cf">done</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p><strong>Solution</strong> Pride and Prejudice We utilize <code>wget</code> to download files from the web via our bash chunk or command line. This allows us to non-interactively download a web-based file locally. The <code>-nc</code> specification stands for <code>no clobber</code> and it prevents any redownloading of the file if it already exists in our directory. Hence, if the file is identified to be present in the directory already, this specification ensures that the file is not retrieved an additional time. We complete the loop above, which tabulates the number of times each of the four characters is mentioned using our Linux commands. It appears that our friend was incorrect about Darcy being the most mentioned character in the book. We were correct in our assertion that Elizabeth is the character mentioned by name most, at 634 times compared to Darcy’s 416 times.</p>
+<p>Now that we have completed this part of the exercise, we can delete the file locally:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb47"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span> pg42671.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <ol start="2" type="1">
 <li>What’s the difference between the following two commands?</li>
 </ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;hello, world&#39;</span> <span class="op">&gt;</span> test1.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;hello, world&#39;</span> <span class="op">&gt;</span> test1.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>and</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;hello, world&#39;</span> <span class="op">&gt;&gt;</span> test2.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb49"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&#39;hello, world&#39;</span> <span class="op">&gt;&gt;</span> test2.txt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p><strong>Solution</strong> Difference Between Commands The first command writes <code>hello, world</code> to a file called <code>test1.txt</code>. It creates the file if it does not already exist. If the file does exist, this command overwrites its contents, replacing anything prior with <code>hello, world</code>. In contrast, the second command appends <code>hello, world</code> to a file called <code>test2.txt</code>. If the file does not already exist, it creates the file and writes <code>hello, world</code> as its contents. If the file already exists and is populated with written content, then it adds <code>hello, world</code> at the end of the file and preserves the preexisting contents. This subtle difference can be illustrated by running both cells above multiple times. Notice that after running the bash commands several times and opening each file, <code>test1.txt</code> will still be a one-line file with its only contents being the specified <code>hello, world</code> message. Meanwhile, <code>test2.txt</code> will have a <code>hello, world</code> line for each time the bash code was run. Ultimately, this illustrates the difference between overwriting preexisting content and appending it with new content.</p>
 <ol start="3" type="1">
 <li>Using your favorite text editor (e.g., <code>vi</code>), type the following and save the file as <code>middle.sh</code>:</li>
 </ol>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/bin/sh</span></span>
-<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Select lines from the middle of a file.</span></span>
-<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Usage: bash middle.sh filename end_line num_lines</span></span>
-<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span> <span class="at">-n</span> <span class="st">&quot;</span><span class="va">$2</span><span class="st">&quot;</span> <span class="st">&quot;</span><span class="va">$1</span><span class="st">&quot;</span> <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> <span class="st">&quot;</span><span class="va">$3</span><span class="st">&quot;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/bin/sh</span></span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Select lines from the middle of a file.</span></span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Usage: bash middle.sh filename end_line num_lines</span></span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span> <span class="at">-n</span> <span class="st">&quot;</span><span class="va">$2</span><span class="st">&quot;</span> <span class="st">&quot;</span><span class="va">$1</span><span class="st">&quot;</span> <span class="kw">|</span> <span class="fu">tail</span> <span class="at">-n</span> <span class="st">&quot;</span><span class="va">$3</span><span class="st">&quot;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Using <code>chmod</code> to make the file executable by the owner, and run</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./middle.sh</span> pg42671.txt 20 5</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./middle.sh</span> pg42671.txt 20 5</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Explain the output. Explain the meaning of <code>&quot;$1&quot;</code>, <code>&quot;$2&quot;</code>, and <code>&quot;$3&quot;</code> in this shell script. Why do we need the first line of the shell script?</p>
 </section>

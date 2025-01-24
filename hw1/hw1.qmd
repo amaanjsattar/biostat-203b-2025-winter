@@ -123,17 +123,29 @@ zless < ~/mimic/hosp/admissions.csv.gz | head -n 5
 ```
 **Solution**: How many rows in `admissions.csv.gz`, excluding header?
 ```{bash}
-zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | wc -l
+zcat < ~/mimic/hosp/admissions.csv.gz | 
+tail -n +2 | 
+wc -l
 ```
 **Solution**: How many hospitalizations in `hadm_id`?
 ```{bash} 
-zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $2}' | sort | uniq | wc -l
+zcat < ~/mimic/hosp/admissions.csv.gz | 
+tail -n +2 | 
+awk -F',' '{print $2}' | 
+sort | 
+uniq | 
+wc -l
 
 ```
 **Solution** How many unique patients (identified by `subject_id`) are in this data file?
 ```{bash}
 
-zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $1}' | sort | uniq | wc -l
+zcat < ~/mimic/hosp/admissions.csv.gz |
+tail -n +2 | 
+awk -F',' '{print $1}' | 
+sort | 
+uniq | 
+wc -l
 ```
 **Solution** Compare the number of unique patients in `admissions.csv.gz` to the number of unique patients in `patients.csv.gz`. 
 First, we glance at the first few lines of the file.
@@ -142,7 +154,12 @@ zless < ~/mimic/hosp/patients.csv.gz | head -n 5
 ```
 Next, we count the number of unique values present in the `subject_id` column (the first column):
 ```{bash}
-zcat < ~/mimic/hosp/patients.csv.gz | tail -n +2 | awk -F',' '{print $1}' | sort | uniq | wc -l
+zcat < ~/mimic/hosp/patients.csv.gz |
+tail -n +2 | 
+awk -F',' '{print $1}' | 
+sort | 
+uniq | 
+wc -l
 ```
 We observe that there are 223,452 patients in the `admissions.csv.gz`, and 364,627 patients in the `patients.csv.gz` file. These numbers clearly do not match.
 
@@ -151,25 +168,45 @@ We observe that there are 223,452 patients in the `admissions.csv.gz`, and 364,6
 **Solution**:  `admission_type`
 We observe that the possible values for `admission_type` are: `EW EMER.`, `EU OBSERVATION`, `OBSERVATION ADMIT`, `URGENT`, `SURGICAL SAME DAY ADMISSION`, `DIRECT OBSERVATION`, `DIRECT EMER.`, `ELECTIVE`, and `AMBULATORY OBSERVATION`. Frequencies for each unique value are displayed below, in descending order:
 ```{bash}
-zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $6}' | sort | uniq -c | sort -nr 
+zcat < ~/mimic/hosp/admissions.csv.gz | 
+tail -n +2 | 
+awk -F',' '{print $6}' | 
+sort | 
+uniq -c | 
+sort -nr 
 ```
 **Solution**: `admission_location`
 We observe that the possible values for `admission_location` are: `EMERGENCY ROOM`, `PHYSICIAN REFERRAL`, `TRANSFER FROM HOSPITAL`, `WALK-IN/SELF REFERRAL`, `CLINIC REFERRAL`, `PROCEDURE SITE`, `TRANSFER FROM SKILLED NURSING FACILITY`, `INTERNAL TRANSFER TO OR FROM PSYCH`, `PACU`, `INFORMATION NOT AVAILABLE`, `AMBULATORY SURGERY TRANSFER`, and ` ` (a singular blank entry). Frequencies for each unique value are displayed below, in descending order:
 
 ```{bash}
-zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $8}' | sort | uniq -c | sort -nr
+zcat < ~/mimic/hosp/admissions.csv.gz | 
+tail -n +2 | 
+awk -F',' '{print $8}' | 
+sort | 
+uniq -c | 
+sort -nr
 ```
 **Solution**: `insurance`
 We observe that the possible values for `insurance` are: `Medicare`, `Private`, `Medicaid`, `Other`, ` ` (blank entry), and `No charge`. Frequences for each unique value are displayed below, in descending order:
 
 ```{bash}
-zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $10}' | sort | uniq -c | sort -nr
+zcat < ~/mimic/hosp/admissions.csv.gz | 
+tail -n +2 | 
+awk -F',' '{print $10}' | 
+sort | 
+uniq -c | 
+sort -nr
 ```
 **Solution**: `race`
 We observe that the possible values for `race` are `WHITE - RUSSIAN`, `WHITE - OTHER EUROPEAN`, `WHITE - EASTERN EUROPEAN`, `WHITE - BRAZILIAN`, `WHITE`, `UNKNOWN`, `UNABLE TO OBTAIN`, `SOUTH AMERICAN`, `PORTUGUESE`, `PATIENT DECLINED TO ANSWER`, `OTHER`, `NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER`, `MULTIPLE RACE/ETHNICITY`, `HISPANIC/LATINO - SALVADORAN`, `HISPANIC/LATINO - PUERTO RICAN`, `HISPANIC/LATINO - MEXICAN`, `HISPANIC/LATINO - HONDURAN`, `HISPANIC/LATINO - GUATEMALAN`, `HISPANIC/LATINO - DOMINICAN`, `HISPANIC/LATINO - CUBAN`, `HISPANIC/LATINO - COLUMBIAN`, `HISPANIC/LATINO - CENTRAL AMERICAN`, `HISPANIC OR LATINO`, `BLACK/CARIBBEAN ISLAND`, `BLACK/CAPE VERDEAN`, `BLACK/AFRICAN AMERICAN`, `BLACK/AFRICAN`, `ASIAN - SOUTH EAST ASIAN`, `ASIAN - KOREAN`, `ASIAN - CHINESE`, `ASIAN - ASIAN INDIAN`, `ASIAN`, and `AMERICAN INDIAN/ALASKA NATIVE`. Frequencies for each unique value are displayed below, in descending order. 
 
 ```{bash} 
-zcat < ~/mimic/hosp/admissions.csv.gz | tail -n +2 | awk -F',' '{print $13}' | sort | uniq | sort -nr
+zcat < ~/mimic/hosp/admissions.csv.gz | 
+tail -n +2 | 
+awk -F',' '{print $13}' | 
+sort | 
+uniq | 
+sort -nr
 ```
 
 7. The `icustays.csv.gz` file contains all the ICU stays during the study period. How many ICU stays, identified by `stay_id`, are in this data file? How many unique patients, identified by `subject_id`, are in this data file?
@@ -182,11 +219,19 @@ zless < ~/mimic/icu/icustays.csv.gz | head -n 5
 ```
 Next, we will count the total entries in the `stay_id` column to determine the total number of ICU stays:
 ```{bash}
-zcat < ~/mimic/icu/icustays.csv.gz | tail -n +2 | awk -F',' '{print $3}' | wc -l
+zcat < ~/mimic/icu/icustays.csv.gz | 
+tail -n +2 | 
+awk -F',' '{print $3}' | 
+wc -l
 ```
 Next, we will count the total **unique** entries in the `subject_id` column to determine the total number of unique patients:
 ```{bash}
-zcat < ~/mimic/icu/icustays.csv.gz | tail -n +2 | awk -F',' '{print $1}' | sort | uniq |  wc -l
+zcat < ~/mimic/icu/icustays.csv.gz | 
+tail -n +2 | 
+awk -F',' '{print $1}' | 
+sort | 
+uniq |  
+wc -l
 ```
 We observe that there are 94,458 unique ICU stays in the file and 65,366 unique patients in the file.
 
@@ -201,11 +246,13 @@ ls -lh ~/mimic/hosp/labevents.csv.gz
 ```
 To check the file size for the uncompressed file, we must decompress the file and then list details. We will use the `-dk` option to specify that we wish to keep the original file instead of deleting it. We run the following:
 ```{bash}
+#| eval: false
 gzip -dk < ~/mimic/hosp/labevents.csv.gz > ~/mimic/hosp/labevents.csv
 ```
 
 Now we will check the file size: 
 ```{bash}
+#| eval: false
 ls -lh ~/mimic/hosp/labevents.csv
 ```
 We observe that the compressed file size is 2.4 Gb, while the uncompressed file size is 17 Gb. This is a monumental difference in required storage. We will proceed to check the runtimes for counting lines of the compressed versus uncompressed file. Beginning with the compressed file, we run the following: 
@@ -214,12 +261,14 @@ time zcat < ~/mimic/hosp/labevents.csv.gz | wc -l
 ```
 Now, we wil check the runtime for counting the lines of our uncompressed csv file. We run the following: 
 ```{bash} 
+#| eval: false
 time wc -l ~/mimic/hosp/labevents.csv
 ```
 We observe that counting the lines in the compressed file took approximately 1.5 minutes (1 minute and 29.706 seconds at the time this was written, to be exact). Meanwhile, counting the lines in the uncompressed file took approximately 23 seconds (22.678 seconds at the time this was written, to be exact). This means that this same operation performed on the uncompressed file was nearly four times faster, which can be attributed to the fact that we do not need to complete the intermediary step of running `zcat` to display the uncompressed file contents before word counting. CLearly, there is a tradeoff between storage and speed when working with large data files. Uncompressing large files can be costly in terms of storage, but it allows for faster runtimes on processes involving said files. Conversely, working with compressed files can be less costly from a storage perspective, but operations pertaining to the uncompressed contents of the file will rely on the aforementioned intermediary step, increasing runtime. The choice of whether or not to compress files will vary based on the user's resource availability, patience, and value judgement. For users with limited storage capacity (i.e. users who download all data locally), it is likely that the slower runtime may be preferable to downloading extremely large files locally without the storage capacity for them. For users who may need to perform more sophisticated operations on unzipped files, it may be a worthwhile tradeoff to uncompress files and operate on them directly at the expense of some storage space. Similarly, if a file is only to be used once in a particular pipeline, it may be preferable to work with a compressed version as it is a 'one-time' lag in runtime. However, if the file is of central importance in the overarching endeavor, utilizing an uncompressed version may greatly improve the total runtime at multiple points throughout the pipeline. Ultimately, the decision to compress a file should be made in thorough consideration of its utility in fulfilling user goals and the user's own storage reserves. 
 
 Now that we have concluded this exercise, we will delete the uncompressed file. We run the following: 
 ```{bash}
+#| eval: false
 rm ~/mimic/hosp/labevents.csv
 ```
 
@@ -237,10 +286,20 @@ wget -nc http://www.gutenberg.org/cache/epub/42671/pg42671.txt
 for char in Elizabeth Jane Lydia Darcy
 do
   echo $char:
-  # some bash commands here
+  grep -ow "$char" pg42671.txt | wc -l
 done
 ```
 
+**Solution** Pride and Prejudice
+We utilize `wget` to download files from the web via our bash chunk or command line. This allows us to non-interactively download a web-based file locally. The `-nc` specification stands for `no clobber` and it prevents any redownloading of the file if it already exists in our directory. Hence, if the file is identified to be present in the directory already, this specification ensures that the file is not retrieved an additional time. 
+We complete the loop above, which tabulates the number of times each of the four characters is mentioned using our Linux commands. It appears that our friend was incorrect about Darcy being the most mentioned character in the book. We were correct in our assertion that Elizabeth is the character mentioned by name most, at 634 times compared to Darcy's 416 times. 
+
+Now that we have completed this part of the exercise, we can delete the file locally:
+```{bash}
+#| eval: false
+rm pg42671.txt
+
+```
 2. What's the difference between the following two commands?
 ```{bash}
 #| eval: false
@@ -251,6 +310,8 @@ and
 #| eval: false
 echo 'hello, world' >> test2.txt
 ```
+**Solution** Difference Between Commands
+The first command writes `hello, world` to a file called `test1.txt`. It creates the file if it does not already exist. If the file does exist, this command overwrites its contents, replacing anything prior with `hello, world`. In contrast, the second command appends `hello, world` to a file called `test2.txt`. If the file does not already exist, it creates the file and writes `hello, world` as its contents. If the file already exists and is populated with written content, then it adds `hello, world` at the end of the file and preserves the preexisting contents. This subtle difference can be illustrated by running both cells above multiple times. Notice that after running the bash commands several times and opening each file, `test1.txt` will still be a one-line file with its only contents being the specified `hello, world` message. Meanwhile, `test2.txt` will have a `hello, world` line for each time the bash code was run. Ultimately, this illustrates the difference between overwriting preexisting content and appending it with new content. 
 
 3. Using your favorite text editor (e.g., `vi`), type the following and save the file as `middle.sh`:
 ```{bash eval=FALSE}
