@@ -95,7 +95,7 @@ We observe that the data files are compressed, existing in `csv.gz` rather than 
 
 4. (Looping in Bash) What's the output of the following bash script?
 ```{bash}
-#| eval: false
+#| eval: true
 for datafile in ~/mimic/hosp/{a,l,pa}*.gz
 do
   ls -l $datafile
@@ -257,13 +257,13 @@ ls -lh ~/mimic/hosp/labevents.csv.gz
 ```
 To check the file size for the uncompressed file, we must decompress the file and then list details. We will use the `-dk` option to specify that we wish to keep the original file instead of deleting it. We run the following:
 ```{bash}
-#| eval: false
+#| eval: true
 gzip -dk < ~/mimic/hosp/labevents.csv.gz > ~/mimic/hosp/labevents.csv
 ```
 
 Now we will check the file size: 
 ```{bash}
-#| eval: false
+#| eval: true
 ls -lh ~/mimic/hosp/labevents.csv
 ```
 We observe that the compressed file size is 2.4 Gb, while the uncompressed file size is 17 Gb. This is a monumental difference in required storage. We will proceed to check the runtimes for counting lines of the compressed versus uncompressed file. Beginning with the compressed file, we run the following: 
@@ -272,14 +272,14 @@ time zcat < ~/mimic/hosp/labevents.csv.gz | wc -l
 ```
 Now, we wil check the runtime for counting the lines of our uncompressed csv file. We run the following: 
 ```{bash} 
-#| eval: false
+#| eval: true
 time wc -l ~/mimic/hosp/labevents.csv
 ```
 We observe that counting the lines in the compressed file took approximately 1.5 minutes (1 minute and 29.706 seconds at the time this was written, to be exact). Meanwhile, counting the lines in the uncompressed file took approximately 23 seconds (22.678 seconds at the time this was written, to be exact). This means that this same operation performed on the uncompressed file was nearly four times faster, which can be attributed to the fact that we do not need to complete the intermediary step of running `zcat` to display the uncompressed file contents before word counting. CLearly, there is a tradeoff between storage and speed when working with large data files. Uncompressing large files can be costly in terms of storage, but it allows for faster runtimes on processes involving said files. Conversely, working with compressed files can be less costly from a storage perspective, but operations pertaining to the uncompressed contents of the file will rely on the aforementioned intermediary step, increasing runtime. The choice of whether or not to compress files will vary based on the user's resource availability, patience, and value judgement. For users with limited storage capacity (i.e. users who download all data locally), it is likely that the slower runtime may be preferable to downloading extremely large files locally without the storage capacity for them. For users who may need to perform more sophisticated operations on unzipped files, it may be a worthwhile tradeoff to uncompress files and operate on them directly at the expense of some storage space. Similarly, if a file is only to be used once in a particular pipeline, it may be preferable to work with a compressed version as it is a 'one-time' lag in runtime. However, if the file is of central importance in the overarching endeavor, utilizing an uncompressed version may greatly improve the total runtime at multiple points throughout the pipeline. Ultimately, the decision to compress a file should be made in thorough consideration of its utility in fulfilling user goals and the user's own storage reserves. 
 
 Now that we have concluded this exercise, we will delete the uncompressed file. We run the following: 
 ```{bash}
-#| eval: false
+#| eval: true
 rm ~/mimic/hosp/labevents.csv
 ```
 
@@ -287,12 +287,12 @@ rm ~/mimic/hosp/labevents.csv
 
 1. You and your friend just have finished reading *Pride and Prejudice* by Jane Austen. Among the four main characters in the book, Elizabeth, Jane, Lydia, and Darcy, your friend thinks that Darcy was the most mentioned. You, however, are certain it was Elizabeth. Obtain the full text of the novel from <http://www.gutenberg.org/cache/epub/42671/pg42671.txt> and save to your local folder. 
 ```{bash}
-#| eval: false
+#| eval: true
 wget -nc http://www.gutenberg.org/cache/epub/42671/pg42671.txt
 ```
 Explain what `wget -nc` does. Do **not** put this text file `pg42671.txt` in Git. Complete the following loop to tabulate the number of times each of the four characters is mentioned using Linux commands.
 ```{bash}
-#| eval: false
+#| eval: true
 wget -nc http://www.gutenberg.org/cache/epub/42671/pg42671.txt
 for char in Elizabeth Jane Lydia Darcy
 do
@@ -308,12 +308,12 @@ We complete the loop above, which tabulates the number of times each of the four
 
 2. What's the difference between the following two commands?
 ```{bash}
-#| eval: false
+#| eval: true
 echo 'hello, world' > test1.txt
 ```
 and
 ```{bash}
-#| eval: false
+#| eval: true
 echo 'hello, world' >> test2.txt
 ```
 **Solution** Difference Between Commands
@@ -329,7 +329,7 @@ head -n "$2" "$1" | tail -n "$3"
 ```
 Using `chmod` to make the file executable by the owner, and run
 ```{bash}
-#| eval: false
+#| eval: true
 ./middle.sh pg42671.txt 20 5
 ```
 Explain the output. Explain the meaning of `"$1"`, `"$2"`, and `"$3"` in this shell script. Why do we need the first line of the shell script?
@@ -342,8 +342,84 @@ We see that the output of running our script with the provided parameter values 
 
 Try following commands in Bash and interpret the results: `cal`, `cal 2025`, `cal 9 1752` (anything unusual?), `date`, `hostname`, `arch`, `uname -a`, `uptime`, `who am i`, `who`, `w`, `id`, `last | head`, `echo {con,pre}{sent,fer}{s,ed}`, `time sleep 5`, `history | tail`.
 
-## Q6. Book
+**Solution**: Interpreting Commands
+```{bash}
+cal
+```
+```{bash}
+cal 2025
+```
 
+```{bash}
+cal 9 1752
+```
+```{bash}
+date
+```
+```{bash}
+hostname
+```
+
+```{bash}
+arch
+```
+```{bash}
+uname -a
+```
+```{bash}
+uptime
+```
+
+```{bash}
+who am i
+```
+
+```{bash}
+who
+
+```
+
+``` {bash}
+w
+```
+
+``` {bash}
+id
+```
+
+``` {bash}
+last | head
+```
+``` {bash}
+echo {con,pre}{sent,fer}{s,ed}
+```
+
+```{bash}
+time sleep 5
+```
+
+```{bash}
+history | tail
+```
+
+`cal`: Displays the calendar for the current month.  
+`cal 2025`: Displays the calendar for the year 2025.  
+`cal 9 1752`: Shows the calendar for September 1752, missing 11 days due to the Gregorian calendar adoption.  
+`date`: Displays the current date and time.  
+`hostname`: Shows the name of the machine (host).  
+`arch`: Displays the architecture of the system.  
+`uname -a`: Outputs detailed system information, including kernel, OS, and architecture.  
+`uptime`: Shows how long the system has been running and the load averages.  
+`who am i`: Displays the current user’s login session information.  
+`who`: Lists all users currently logged into the system.  
+`w`: Displays detailed information about logged-in users and their processes.  
+`id`: Outputs the user ID (`UID`), group ID (`GID`), and group memberships of the current user.  
+`last | head`: Displays the most recent login sessions.  
+`echo {con,pre}{sent,fer}{s,ed}`: Uses brace expansion to generate combinations of words.  
+`time sleep 5`: Measures the time taken to execute a command (e.g., `sleep 5`).  
+`history | tail`: Displays the last few commands executed in the shell history.  
+
+## Q6. Book
 1. Git clone the repository <https://github.com/christophergandrud/Rep-Res-Book> for the book _Reproducible Research with R and RStudio_ to your local machine. Do **not** put this repository within your homework repository `biostat-203b-2025-winter`.
 
 2. Open the project by clicking `rep-res-3rd-edition.Rproj` and compile the book by clicking `Build Book` in the `Build` panel of RStudio. (Hint: I was able to build `git_book` and `epub_book` directly. For `pdf_book`, I needed to add a line `\usepackage{hyperref}` to the file `Rep-Res-Book/rep-res-3rd-edition/latex/preabmle.tex`.)
@@ -353,5 +429,6 @@ The point of this exercise is (1) to obtain the book for free and (2) to see an 
 For grading purpose, include a screenshot of Section 4.1.5 of the book here.
 **Solution**: Book Download
 
-I was able to successfully download and compile the book locally. A screenshot of the specified section is included in the `hw1` folder.
+I was able to successfully download and compile the book locally. A screenshot of the specified section is included in the `hw1` folder, as well as below: 
+![Section 4.1.5 Screenshot](RepRes_Screenshot.png)
 ---
