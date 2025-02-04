@@ -87,11 +87,57 @@ system.time(
 object_size(admissions_dt)
 ```
 
-Exact execution times for each function are displayed above. We observe that utilizing the `base r` function `read.csv` was the most time-intensive, taking approximately 9.6 seconds to complete. Using `read.csv` from the `tidyverse` was notably faster, with an execution time of approximately 4.7 seconds. The fastest function won by a considerable margin, being the `fread` function from the `data.table` package. This function took less than one second to execute. 
+```{r} 
+# Check the structure of each dataframe
+
+cat("\nBase R (read.csv):\n")
+str(admissions_base)
+
+cat("\nTidyverse (read_csv):\n")
+str(admissions_tidy)
+
+cat("\nData.table (fread):\n")
+str(admissions_dt)
+```
+
+Exact execution times for each function are displayed above. We observe that utilizing the `base r` function `read.csv` was the most time-intensive, taking approximately 9.6 seconds to complete. Using `read_csv` from the `tidyverse` was notably faster, with an execution time of approximately 4.7 seconds. The fastest function won by a considerable margin, being the `fread` function from the `data.table` package. This function took less than one second to execute. 
+In terms of memory usage, `fread` was the least memory-intensive, utilizing approximately 63.5 MB. Both `read.csv` and `read_csv` utilize 200.1 MB. 
+We also recognize crucial differences in parsed data types for each function. It appears that in all cases, string handling was identical and these columns were handled as `character (chr)` types. The most notable difference was in handling columns with date values. Both `read.csv` and `read_csv` stored these columns as `chr` type, while `fread` converted them to `POSIXct`. This is both memory-efficient and timesaving, as it bypasses any manual date conversion we would have to do when utilizing the other two functions. Ultimately, it appears that `fread` is the most memory-efficient and fastest function for reading plain text data files, while `read_csv` may be more ideal for `tidyverse-based workflows`. The base R function `read.csv` does not appear to be very efficient in speed or memory, nor does it appear to properly parse datetime data types. 
 
 ### Q1.2 User-supplied data types
 
 Re-ingest `admissions.csv.gz` by indicating appropriate column data types in `read_csv`. Does the run time change? How much memory does the result tibble use? (Hint: `col_types` argument in `read_csv`.)
+
+**Solution** Re-ingesting with User-Supplied Data Types:
+We will now specify column types within the `read_csv` function to see if this affects runtime and/or memory usage.
+```{r}
+admissions_coltypes <- cols(
+  subject_id = col_integer(),
+  hadm_id = col_integer(),
+  admittime = col_datetime(),
+  dischtime = col_datetime(),
+  deathtime = col_datetime(),
+  admission_type = col_character(),
+  admit_provider_id = col_character(),
+  admission_location = col_character(),
+  discharge_location = col_character(),
+  insurance = col_character(),
+  language = col_character(),
+  marital_status = col_character(),
+  race = col_character(),
+  edregtime = col_datetime(),
+  edouttime = col_datetime(),
+  hospital_expire_flag = col_integer()
+)
+# check runtime 
+system.time({
+  admissions_tidy_spec <- read_csv('~/mimic/hosp/admissions.csv.gz',
+                                   col_types = admissions_coltypes)
+})
+# check memory usage
+object_size(admissions_tidy_spec)
+```
+We observe that after specifying the column types ourselves and reading in the data, the process is both faster and more memory-efficient. The runtime is just over 1 second, compared to > 4.5 seconds when we didn't specify column types. Similarly, we observe that memory usage is 63.47 MB, compared to 200.1 MB  when types were not pre-specified. Ultimately, by avoiding unnecessary character-types, this user specification is able to greatly enhance the speed and storage efficiency of our ingesting process.
 
 ## Q2. Ingest big data files
 
@@ -116,9 +162,31 @@ zcat < ~/mimic/hosp/labevents.csv.gz | head -10
 
 Try to ingest `labevents.csv.gz` using `read_csv`. What happens? If it takes more than 3 minutes on your computer, then abort the program and report your findings. 
 
+**Solution**: Ingesting Large File
+```{r, eval = false}
+system.time({
+  labevents_tidy <- read_csv('~/mimic/hosp/labevents.csv.gz')
+})
+```
+I allowed this cell to run for approximately ten minutes, and the file was eventually read. However, this is a time- and memory-intensive operation to be run locally, so a workaround solution may be warranted. It appears that the large file size and default data parsing may both be contributing to the time-intensive nature of this procedure, so we may consider ingesting only a subset of the data and/or specifying data types beforehand.
+
 ### Q2.2 Ingest selected columns of `labevents.csv.gz` by `read_csv`
 
 Try to ingest only columns `subject_id`, `itemid`, `charttime`, and `valuenum` in `labevents.csv.gz` using `read_csv`.  Does this solve the ingestion issue? (Hint: `col_select` argument in `read_csv`.)
+
+**Solution** Ingesting Selected Columns:
+``` {r, eval = false}
+system.time({
+  labevents_filtered <- read_csv('~/mimic/hosp/labevents.csv.gz',
+                                 col_select = c(
+                                   subject_id,
+                                   itemid,
+                                   charttime,
+                                   valuenum
+                                 ))
+})
+```
+Selecting a smaller subset of columns did greatly improve our ingestion issue, though it still took quite a bit of time to read in the data (just shy of three minutes). This is still a marked improvement from the 10+ minutes elapsed while running the prior cell. 
 
 ### Q2.3 Ingest a subset of `labevents.csv.gz`
 
