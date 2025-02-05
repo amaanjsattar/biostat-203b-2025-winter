@@ -200,6 +200,13 @@ awk -F, 'BEGIN {OFS=","; print "subject_id,itemid,charttime,valuenum"}
              $5 == 50882 || $5 == 51221 || $5 == 51301 || $5 == 50931) {
     print $2, $5, $7, $10
 }' | gzip > labevents_filtered.csv.gz
+# Count the number of rows, excluding header
+zcat labevents_filtered.csv.gz | tail -n +2 | wc -l
+```
+
+We observe that there are 32,679,896 lines, excluding our header. Now, we will display the first ten lines of our new file. 
+```{bash}
+zcat labevents_filtered.csv.gz | head -10
 
 ```
 ### Q2.4 Ingest `labevents.csv` by Apache Arrow
@@ -211,6 +218,46 @@ Then use [`arrow::open_dataset`](https://arrow.apache.org/docs/r/reference/open_
 
 Write a few sentences to explain what is Apache Arrow. Imagine you want to explain it to a layman in an elevator. 
 
+**Solution** Ingesting Using Apache Arrow:
+First, we will decompress `labevents.csv.gz` to `labevents.csv` and place it in our current working directory.
+```{bash}
+#| eval: false
+gunzip -c ~/mimic/hosp/labevents.csv.gz > labevents.csv
+
+
+```
+Next, we will use `arrow::open_dataset` to ingest `labevents.csv`, select columns, and filter `itemid` in accordance with the guidelines established in the previous exercise.
+
+```{r}
+#| eval: false
+# Time the operation
+# Use open_dataset to ingest file
+# select columns 
+# filter itemid
+system.time({
+  labevents_filtered <- open_dataset(
+    'labevents.csv', 
+    format = 'csv') %>%
+    select(subject_id, itemid, charttime, valuenum) %>%
+    filter(itemid %in% c(
+      50912, 
+      50971, 
+      50983, 
+      50902, 
+      50882, 
+      51221, 
+      51301, 
+      50931)) %>%
+    collect()
+})
+```
+We observe that the operation took just shy of one minute to complete, which is much faster than the operations we conducted that were reliant upon local memory. Now, we will display the number of rows, as well as the first ten rows of the filtered dataset.
+
+```{r}
+print(nrow(labevents_filtered))
+print(head(labevents_filtered, 10))
+```
+Comparing this with the first ten rows we displayed in the previous exercise, we have obtained an identical result.
 ### Q2.5 Compress `labevents.csv` to Parquet format and ingest/select/filter
 
 <p align="center">
