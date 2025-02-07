@@ -92,13 +92,13 @@ memuse_dt <- format(object_size(admissions_dt), units = 'auto')
 ```{r} 
 # Check the structure of each dataframe
 
-cat("\nBase R (read.csv):\n")
+cat('\nBase R (read.csv):\n')
 str(admissions_base)
 
-cat("\nTidyverse (read_csv):\n")
+cat('\nTidyverse (read_csv):\n')
 str(admissions_tidy)
 
-cat("\nData.table (fread):\n")
+cat('\nData.table (fread):\n')
 str(admissions_dt)
 ```
 
