@@ -58,33 +58,34 @@ Which function is fastest? Is there difference in the (default) parsed data type
 
 **Solution** Comparing function speeds:
 
-We will use `system.time` to compare the execution time for each of the functions listed above: 
+We will compute the runtimes and memory usage of each function. Note that the runtime utilized corresponds to the `elapsed` runtime as displayed by `system.time`. 
 ```{r}
 # read.csv (base r) 
 # speed
-system.time(
-  {admissions_base <- read.csv('~/mimic/hosp/admissions.csv.gz')})
+runtime_base <- system.time(
+  {admissions_base <- read.csv('~/mimic/hosp/admissions.csv.gz')}
+  )[['elapsed']]
 # memory usage
-pryr::object_size(admissions_base)
+memuse_base <- format(object_size(admissions_base), units = 'auto')
 ```
 
 ```{r}
-# read_csv (tidyverse) 
-#speed
-system.time(
+# Measure runtime
+runtime_tidy <- system.time(
   {admissions_tidy <- read.csv('~/mimic/hosp/admissions.csv.gz')}
-)
+)[['elapsed']]
+
 # memory usage
-object_size(admissions_tidy)
+memuse_tidy <- format(object_size(admissions_tidy), units = 'auto')
 ```
 
 ```{r}
 # fread (data.table package) speed
-system.time(
+runtime_dt <- system.time(
   {admissions_dt <- fread('~/mimic/hosp/admissions.csv.gz')}
-)
+)[['elapsed']]
 # memory usage
-object_size(admissions_dt)
+memuse_dt <- format(object_size(admissions_dt), units = 'auto')
 ```
 
 ```{r} 
@@ -100,8 +101,8 @@ cat("\nData.table (fread):\n")
 str(admissions_dt)
 ```
 
-Exact execution times for each function are displayed above. We observe that utilizing the `base r` function `read.csv` was the most time-intensive, taking approximately 9.6 seconds to complete. Using `read_csv` from the `tidyverse` was notably faster, with an execution time of approximately 4.7 seconds. The fastest function won by a considerable margin, being the `fread` function from the `data.table` package. This function took less than one second to execute. 
-In terms of memory usage, `fread` was the least memory-intensive, utilizing approximately 63.5 MB. Both `read.csv` and `read_csv` utilize 200.1 MB. 
+We observe that utilizing the `base r` function `read.csv` was the most time-intensive, taking approximately `r runtime_base` seconds to complete. Using `read_csv` from the `tidyverse` was notably faster, with an execution time of approximately `r runtime_tidy` seconds. The fastest function won by a considerable margin, being the `fread` function from the `data.table` package. This function took `r runtime_dt` seconds to execute.. 
+In terms of memory usage, `fread` was the least memory-intensive, utilizing `r memuse_dt`. Comparatively, `read.csv` and `read_csv` utilize equal memory (`r memuse_tidy` = `r memuse_base`. 
 We also recognize crucial differences in parsed data types for each function. It appears that in all cases, string handling was identical and these columns were handled as `character (chr)` types. The most notable difference was in handling columns with date values. Both `read.csv` and `read_csv` stored these columns as `chr` type, while `fread` converted them to `POSIXct`. This is both memory-efficient and timesaving, as it bypasses any manual date conversion we would have to do when utilizing the other two functions. Ultimately, it appears that `fread` is the most memory-efficient and fastest function for reading plain text data files, while `read_csv` may be more ideal for `tidyverse-based workflows`. The base R function `read.csv` does not appear to be very efficient in speed or memory, nor does it appear to properly parse datetime data types. 
 
 ### Q1.2 User-supplied data types
@@ -130,14 +131,14 @@ admissions_coltypes <- cols(
   hospital_expire_flag = col_integer()
 )
 # check runtime 
-system.time({
+runtime_tidy_spec <- system.time({
   admissions_tidy_spec <- read_csv('~/mimic/hosp/admissions.csv.gz',
-                                   col_types = admissions_coltypes)
-})
+                                   col_types = admissions_coltypes)}
+  )[['elapsed']]
 # check memory usage
-object_size(admissions_tidy_spec)
+memuse_tidy_spec <- format(object_size(admissions_tidy_spec), units = 'auto')
 ```
-We observe that after specifying the column types ourselves and reading in the data, the process is both faster and more memory-efficient. The runtime on the user end is just over 1 second (1.085 sec, to be exact), compared to > 4.5 seconds (4.736 sec, to be exact) when we didn't specify column types. Similarly, we observe that memory usage is 63.47 MB, compared to 200.1 MB  when types were not pre-specified. Ultimately, by avoiding unnecessary character-types, this user specification is able to greatly enhance the speed and storage efficiency of our ingesting process.
+We observe that after specifying the column types ourselves and reading in the data, the process is both faster and more memory-efficient. The runtime is `r runtime_tidy_spec` seconds, compared to `r runtime_tidy` seconds when we didn't specify column types. Similarly, we observe that memory usage is `r memuse_tidy_spec`, compared to `r memuse_tidy` when types were not pre-specified. Ultimately, by avoiding unnecessary character-types, this user specification is able to greatly enhance the speed and storage efficiency of our ingesting process.
 
 ## Q2. Ingest big data files
 <p align="center">
@@ -166,7 +167,7 @@ system.time({
   labevents_tidy <- read_csv('~/mimic/hosp/labevents.csv.gz')
 })
 ```
-I allowed this cell to run for approximately ten minutes, and the file was eventually read. However, this is a time- and memory-intensive operation to be run locally, so a workaround solution may be warranted. It appears that the large file size and default data parsing may both be contributing to the time-intensive nature of this procedure, so we may consider ingesting only a subset of the data and/or specifying data types beforehand.
+I allowed this cell to run for approximately ten minutes (in one particular instance), and the file was eventually read. However, this is a time- and memory-intensive operation to be run locally, so a workaround solution may be warranted. It appears that the large file size and default data parsing may both be contributing to the time-intensive nature of this procedure, so we may consider ingesting only a subset of the data and/or specifying data types beforehand.
 
 ### Q2.2 Ingest selected columns of `labevents.csv.gz` by `read_csv`
 
@@ -185,7 +186,7 @@ system.time({
                                  ))
 })
 ```
-Selecting a smaller subset of columns did greatly improve our ingestion issue, though it still took quite a bit of time to read in the data (just shy of three minutes). This is still a marked improvement from the 10+ minutes elapsed while running the prior cell. 
+Selecting a smaller subset of columns did greatly improve our ingestion issue, though it still took quite a bit of time to read in the data (just shy of three minutes, in one particular instance). This is still a marked improvement from the 10+ minutes elapsed while running the prior cell. 
 
 ### Q2.3 Ingest a subset of `labevents.csv.gz`
 
@@ -215,8 +216,14 @@ zcat labevents_filtered.csv.gz | tail -n +2 | wc -l
 We observe that there are 32,679,896 lines, excluding our header. Now, we will display the first ten lines of our new file. Since we are including the header in this file, we can add an extra line in the `head` parameter: 
 ```{bash}
 zcat labevents_filtered.csv.gz | head -11
-
 ```
+Lastly, we can measure how long it takes for `read_csv` to ingest `labevents_filtered.csv.gz`:
+```{r}
+runtime_filtered <- system.time({
+  labevents_filtered <- read_csv('labevents_filtered.csv.gz')
+})[['elapsed']]
+```
+We observe that it takes `r runtime_filtered` seconds to ingest `labevents_filtered.csv.gz` using `read_csv`.
 ### Q2.4 Ingest `labevents.csv` by Apache Arrow
 
 <p align="center">
@@ -234,19 +241,16 @@ First, we will decompress `labevents.csv.gz` to `labevents.csv` and place it in 
 ```{bash}
 #| eval: false
 gunzip -c ~/mimic/hosp/labevents.csv.gz > labevents.csv
-
-
 ```
 Next, we will use `arrow::open_dataset` to ingest `labevents.csv`, select columns, and filter `itemid` in accordance with the guidelines established in the previous exercise.
 
 ```{r}
-#| eval: false
 # Time the operation
 # Use open_dataset to ingest file
 # select columns 
 # filter itemid
 # arrange by subject_id, charttime, itemid
-system.time({
+runtime_arrow <- system.time({
   labevents_filtered <- arrow::open_dataset(
     'labevents.csv', 
     format = 'csv') %>%
@@ -262,11 +266,13 @@ system.time({
       50931)) %>%
     collect() %>%
     arrange(subject_id, charttime, itemid)
-})
+})[['elapsed']]
 print(nrow(labevents_filtered))
 print(head(labevents_filtered, 10))
 ```
-We observe that the operation took just shy of one minute to complete (52.005 seconds, to be exact), which is much faster than the operations we conducted that were reliant upon local memory. We also display the number of rows, as well as the first ten rows of the filtered dataset. There appear to be 32,679,896 rows. The first ten lines are displayed above.
+Note: Since the operation above has consistently taken < 1 minute to execute locally, I have decided to exclude the `eval = false` specification. 
+
+We observe that the operation took just `r runtime_arrow` seconds, which is much faster than the operations we conducted that were reliant upon local memory. We also display the number of rows, as well as the first ten rows of the filtered dataset. There appear to be 32,679,896 rows. The first ten lines are displayed above.
 
 Comparing this with the first ten rows we displayed in the previous exercise, we have obtained an identical result.
 
@@ -282,18 +288,18 @@ Apache Arrow is a platform utilizing an in-memory, columnar format framework tha
 Re-write the csv file `labevents.csv` in the binary Parquet format (Hint: [`arrow::write_dataset`](https://arrow.apache.org/docs/r/reference/write_dataset.html).) How large is the Parquet file(s)? How long does the ingest+select+filter process of the Parquet file(s) take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
-
+**Solution**: Parquet Formatting
 ```{r}
 # Write the parquet file
   arrow::write_dataset(
-  open_dataset('labevents.csv', format = 'csv'), 
+  arrow::open_dataset('labevents.csv', format = 'csv'), 
   path = 'part-0.parquet', 
   format = 'parquet'
 )
 # Measure runtime
-# Ingestion step
-system.time({
-  labevents.parquet <- arrow::open_dataset('part-0.parquet', 
+# Ingestion, Selection, and Filtering step
+runtime_parquet <- system.time({
+  labevents_parquet <- arrow::open_dataset('part-0.parquet', 
                       format = 'parquet') %>%
     select(subject_id, itemid, charttime, valuenum) %>%
     filter(itemid %in% c(
@@ -305,33 +311,54 @@ system.time({
       51221, 
       51301, 
       50931)) %>%
-    collect() %>%
-    arrange(subject_id, charttime, itemid)
-
-})
-print(nrow(labevents.parquet))
-print(head(labevents.parquet, 10))
+    arrange(subject_id, charttime, itemid) %>%
+    collect()
+})[['elapsed']]
+print(nrow(labevents_parquet))
+print(head(labevents_parquet, 10))
 
 ```
-Total runtime for the ingestion, selection, and filtering procdess was 12.551 sec on the user-end. Once again, we observe that there are 32,679,896 rows in the dataset. We compare the first ten lines with those in 2.4, verifying an identical result. We note that the first ten rows in 2.3 are not sorted in the same manner, and thus a mismatch is to be expected.
+Total runtime for the ingestion, selection, and filtering process was `r runtime_parquet` seconds. Once again, we observe that there are 32,679,896 rows in the dataset. We compare the first ten lines with those in 2.4, verifying an identical result. We note that the first ten rows in 2.3 are not sorted in the same manner, and thus a mismatch is to be expected.
+
+Here is an abridged explanation of the `parquet` file format: The `parquet` format is an open-source, `columnar` file format. In other words, it is column-oriented, as compared to the row-oriented structure of the `csv` file format. This means that every separate column is independently accessible, and data is intuitively organized within columns as opposed to rows. This makes the file format a fantastic candidate for column-wise parallel processing operations. Additionally, this columnar format can minimize file sizes when compared to standard `csv` files. If you are only working with a particular subset of columns, this file format may greatly speed up your workflow and reduce storage and memory tolls. For instance, if you wanted to perform operations on a column within a `csv` file format, you would need to read in the entire file. Conversely, you can access specific columns in isolation using the `parquet` format. Ultimately, this file format allows you to partition particularly sizable datasets into columns and perform operations independently, which maximizes efficiency for column-oriented data tasks and ultimately enables faster processing.
 
 ### Q2.6 DuckDB
-
 <p align="center">
   <img src="./duckdb_logo.png" width="20%">
 </p>
-
 Ingest the Parquet file, convert it to a DuckDB table by [`arrow::to_duckdb`](https://arrow.apache.org/docs/r/reference/to_duckdb.html), select columns, and filter rows as in Q2.5. How long does the ingest+convert+select+filter process take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
 Write a few sentences to explain what is DuckDB. Imagine you want to explain it to a layman in an elevator.
+**Solution** DuckDB Formatting:
+```{r}
+runtime_duckdb <- system.time({
+  labevents_duckdb <- arrow::to_duckdb(labevents_parquet) %>%
+    select(subject_id, itemid, charttime, valuenum) %>%
+    filter(itemid %in% c(
+      50912, 
+      50971, 
+      50983, 
+      50902, 
+      50882, 
+      51221, 
+      51301, 
+      50931)) %>%
+    arrange(subject_id, charttime, itemid) %>%
+    collect()
+})[['elapsed']]
+print(nrow(labevents_duckdb))
+print(head(labevents_duckdb, 10))
+```
+We observe that the ingestion, conversion, selection, and filtering step took `r runtime_duckdb` seconds to execute. Once again, we observe that there are 32,679.896 rows in the dataset, and upon inspection, the ten-line preview of our resulting tibble is identical to previous results. Once again, we note that there was no sorting done in Q2.3, making mismatches in the `head` preview an expected result.
 
+Here is an abridged explanation of DuckDB: DuckDB is an analytical database system that can efficiently process large data. It is unique in that it operates locally within your current application or notebook framework, making it simpler and easier to use. It utilizes a columnar file format, similar to `parquet`, and horizontally slices data into `row groups` within each column. This architecture makes it easy to query large datasets locally and with a single server. It integrates well with the tools that data professionals may use on `DataFrames`, like `Pandas` and `Polars`. Notably, it also allows you to run `SQL` queries and operations directly with no overhead requiremenmt. This interoperability makes it an extremely popular tool for data professionals with a variety of tech stacks. Ultimately, the tool bypasses the need for complicated setups and allows users access to powerful data processing tools at smaller scale than traditional distributed processing frameworks.  
 ## Q3. Ingest and filter `chartevents.csv.gz`
 
 [`chartevents.csv.gz`](https://mimic.mit.edu/docs/iv/modules/icu/chartevents/) contains all the charted data available for a patient. During their ICU stay, the primary repository of a patient’s information is their electronic chart. The `itemid` variable indicates a single measurement type in the database. The `value` variable is the value measured for `itemid`. The first 10 lines of `chartevents.csv.gz` are
 ```{bash}
 zcat < ~/mimic/icu/chartevents.csv.gz | head -10
 ```
-How many rows? 433 millions.
+How many rows? 433 million.
 ```{bash}
 #| eval: false
 zcat < ~/mimic/icu/chartevents.csv.gz | tail -n +2 | wc -l
@@ -343,3 +370,37 @@ zcat < ~/mimic/icu/d_items.csv.gz | head -10
 In later exercises, we are interested in the vitals for ICU patients: heart rate (220045), mean non-invasive blood pressure (220181), systolic non-invasive blood pressure (220179), body temperature in Fahrenheit (223761), and respiratory rate (220210). Retrieve a subset of `chartevents.csv.gz` only containing these items, using the favorite method you learnt in Q2. 
 
 Document the steps and show code. Display the number of rows and the first 10 rows of the result tibble.
+**Solution**: Ingest and Filter ChartEvents
+
+We will utilize `Apache Arrow` to efficiently write this dataset as a `parquet` file. Next, we will select the four key columns we specified in previous exercise. In this step, we will also be filtering for only the relevant vital measurements as specified above. The code below contains comments specifying each step:
+
+```{r}
+#| eval: false
+# Convert the compressed chartevents file to parquet format
+arrow::write_dataset(
+  open_dataset('~/mimic/icu/chartevents.csv.gz',
+               format = 'csv'),
+  path = 'chartevents.parquet',
+  format = 'parquet'
+)
+```
+
+```{r}
+# Ingestion, Selection, and Filtering Step
+  chartevents_filtered <- arrow::open_dataset('chartevents.parquet',
+                      format = 'parquet') %>%
+    select(subject_id, itemid, charttime, valuenum) %>%
+    filter(itemid %in% c(
+      220045,
+      220181,
+      220179,
+      223761,
+      220210)) %>%
+    arrange(subject_id, charttime, itemid) %>%
+    collect()
+# Obtain number of rows
+print(nrow(chartevents_filtered))
+# Display the first ten rows
+print(head(chartevents_filtered, 10))
+```
+We observe that there are 30,195,426 rows in this filtered dataset. The first ten lines are displayed above.
