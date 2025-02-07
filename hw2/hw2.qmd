@@ -65,7 +65,7 @@ We will use `system.time` to compare the execution time for each of the function
 system.time(
   {admissions_base <- read.csv('~/mimic/hosp/admissions.csv.gz')})
 # memory usage
-object_size(admissions_base)
+pryr::object_size(admissions_base)
 ```
 
 ```{r}
@@ -137,11 +137,12 @@ system.time({
 # check memory usage
 object_size(admissions_tidy_spec)
 ```
-We observe that after specifying the column types ourselves and reading in the data, the process is both faster and more memory-efficient. The runtime is just over 1 second, compared to > 4.5 seconds when we didn't specify column types. Similarly, we observe that memory usage is 63.47 MB, compared to 200.1 MB  when types were not pre-specified. Ultimately, by avoiding unnecessary character-types, this user specification is able to greatly enhance the speed and storage efficiency of our ingesting process.
+We observe that after specifying the column types ourselves and reading in the data, the process is both faster and more memory-efficient. The runtime on the user end is just over 1 second (1.085 sec, to be exact), compared to > 4.5 seconds (4.736 sec, to be exact) when we didn't specify column types. Similarly, we observe that memory usage is 63.47 MB, compared to 200.1 MB  when types were not pre-specified. Ultimately, by avoiding unnecessary character-types, this user specification is able to greatly enhance the speed and storage efficiency of our ingesting process.
 
 ## Q2. Ingest big data files
-
-
+<p align="center">
+  <img src="./bigfile.png" width="50%">
+</p>
 Let us focus on a bigger file, `labevents.csv.gz`, which is about 130x bigger than `admissions.csv.gz`.
 ```{bash}
 ls -l ~/mimic/hosp/labevents.csv.gz
@@ -153,6 +154,9 @@ zcat < ~/mimic/hosp/labevents.csv.gz | head -10
 
 ### Q2.1 Ingest `labevents.csv.gz` by `read_csv`
 
+<p align="center">
+  <img src="./readr_logo.png" width="20%">
+</p>
 Try to ingest `labevents.csv.gz` using `read_csv`. What happens? If it takes more than 3 minutes on your computer, then abort the program and report your findings. 
 
 **Solution**: Ingesting Large File
@@ -185,6 +189,10 @@ Selecting a smaller subset of columns did greatly improve our ingestion issue, t
 
 ### Q2.3 Ingest a subset of `labevents.csv.gz`
 
+<p align="center">
+  <img src="./linux_logo.png" width="20%">
+</p>
+
 Our first strategy to handle this big data file is to make a subset of the `labevents` data.  Read the [MIMIC documentation](https://mimic.mit.edu/docs/iv/modules/hosp/labevents/) for the content in data file `labevents.csv`.
 
 In later exercises, we will only be interested in the following lab items: creatinine (50912), potassium (50971), sodium (50983), chloride (50902), bicarbonate (50882), hematocrit (51221), white blood cell count (51301), and glucose (50931) and the following columns: `subject_id`, `itemid`, `charttime`, `valuenum`. Write a Bash command to extract these columns and rows from `labevents.csv.gz` and save the result to a new file `labevents_filtered.csv.gz` in the current working directory. (Hint: Use `zcat <` to pipe the output of `labevents.csv.gz` to `awk` and then to `gzip` to compress the output. Do **not** put `labevents_filtered.csv.gz` in Git! To save render time, you can put `#| eval: false` at the beginning of this code chunk. TA will change it to `#| eval: true` before rendering your qmd file.)
@@ -204,13 +212,16 @@ awk -F, 'BEGIN {OFS=","; print "subject_id,itemid,charttime,valuenum"}
 zcat labevents_filtered.csv.gz | tail -n +2 | wc -l
 ```
 
-We observe that there are 32,679,896 lines, excluding our header. Now, we will display the first ten lines of our new file. 
+We observe that there are 32,679,896 lines, excluding our header. Now, we will display the first ten lines of our new file. Since we are including the header in this file, we can add an extra line in the `head` parameter: 
 ```{bash}
-zcat labevents_filtered.csv.gz | head -10
+zcat labevents_filtered.csv.gz | head -11
 
 ```
 ### Q2.4 Ingest `labevents.csv` by Apache Arrow
 
+<p align="center">
+  <img src="./arrow_logo.png" width="30%">
+</p>
 
 Our second strategy is to use [Apache Arrow](https://arrow.apache.org/) for larger-than-memory data analytics. Unfortunately Arrow does not work with gz files directly. First decompress `labevents.csv.gz` to `labevents.csv` and put it in the current working directory (do not add it in git!). To save render time, put `#| eval: false` at the beginning of this code chunk. TA will change it to `#| eval: true` when rendering your qmd file.
 
@@ -234,8 +245,9 @@ Next, we will use `arrow::open_dataset` to ingest `labevents.csv`, select column
 # Use open_dataset to ingest file
 # select columns 
 # filter itemid
+# arrange by subject_id, charttime, itemid
 system.time({
-  labevents_filtered <- open_dataset(
+  labevents_filtered <- arrow::open_dataset(
     'labevents.csv', 
     format = 'csv') %>%
     select(subject_id, itemid, charttime, valuenum) %>%
@@ -248,16 +260,19 @@ system.time({
       51221, 
       51301, 
       50931)) %>%
-    collect()
+    collect() %>%
+    arrange(subject_id, charttime, itemid)
 })
-```
-We observe that the operation took just shy of one minute to complete, which is much faster than the operations we conducted that were reliant upon local memory. Now, we will display the number of rows, as well as the first ten rows of the filtered dataset.
-
-```{r}
 print(nrow(labevents_filtered))
 print(head(labevents_filtered, 10))
 ```
+We observe that the operation took just shy of one minute to complete (52.005 seconds, to be exact), which is much faster than the operations we conducted that were reliant upon local memory. We also display the number of rows, as well as the first ten rows of the filtered dataset. There appear to be 32,679,896 rows. The first ten lines are displayed above.
+
 Comparing this with the first ten rows we displayed in the previous exercise, we have obtained an identical result.
+
+Here is an abridged explanation of Apache Arrow: 
+Apache Arrow is a platform utilizing an in-memory, columnar format framework that reduces the memory and CPU toll associated with processing data. It is language-agnostic. It is optimized for handling large-scale data, with its columnar formatting minimizing waste of serialization and deserialization by standardizing the process outright. It also eases the process of data transfer between platforms, as well as moving data from one programming language to another. Technical details aside, it essentially makes data handling much more efficient and versatile.
+
 ### Q2.5 Compress `labevents.csv` to Parquet format and ingest/select/filter
 
 <p align="center">
@@ -267,6 +282,38 @@ Comparing this with the first ten rows we displayed in the previous exercise, we
 Re-write the csv file `labevents.csv` in the binary Parquet format (Hint: [`arrow::write_dataset`](https://arrow.apache.org/docs/r/reference/write_dataset.html).) How large is the Parquet file(s)? How long does the ingest+select+filter process of the Parquet file(s) take? Display the number of rows and the first 10 rows of the result tibble and make sure they match those in Q2.3. (Hint: use `dplyr` verbs for selecting columns and filtering rows.)
 
 Write a few sentences to explain what is the Parquet format. Imagine you want to explain it to a layman in an elevator.
+
+```{r}
+# Write the parquet file
+  arrow::write_dataset(
+  open_dataset('labevents.csv', format = 'csv'), 
+  path = 'part-0.parquet', 
+  format = 'parquet'
+)
+# Measure runtime
+# Ingestion step
+system.time({
+  labevents.parquet <- arrow::open_dataset('part-0.parquet', 
+                      format = 'parquet') %>%
+    select(subject_id, itemid, charttime, valuenum) %>%
+    filter(itemid %in% c(
+      50912, 
+      50971, 
+      50983, 
+      50902, 
+      50882, 
+      51221, 
+      51301, 
+      50931)) %>%
+    collect() %>%
+    arrange(subject_id, charttime, itemid)
+
+})
+print(nrow(labevents.parquet))
+print(head(labevents.parquet, 10))
+
+```
+Total runtime for the ingestion, selection, and filtering procdess was 12.551 sec on the user-end. Once again, we observe that there are 32,679,896 rows in the dataset. We compare the first ten lines with those in 2.4, verifying an identical result. We note that the first ten rows in 2.3 are not sorted in the same manner, and thus a mismatch is to be expected.
 
 ### Q2.6 DuckDB
 
