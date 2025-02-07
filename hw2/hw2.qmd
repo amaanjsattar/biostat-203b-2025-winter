@@ -162,6 +162,7 @@ zcat < ~/mimic/hosp/labevents.csv.gz | head -10
 Try to ingest `labevents.csv.gz` using `read_csv`. What happens? If it takes more than 3 minutes on your computer, then abort the program and report your findings. 
 
 **Solution**: Ingesting Large File
+When you try to ingest `labevents.csv.gz` using `read.csv`, the runtime is quite large due to the large file size, as well as the manner in which the function loads everything into memory at once. As such, if you only need a smaller subset of the data or you can process it in a more piecewise fashion, other data ingestion tools may be a much faster bet.
 ```{r}
 #| eval: false
 system.time({
@@ -187,7 +188,7 @@ system.time({
                                  ))
 })
 ```
-Selecting a smaller subset of columns did greatly improve our ingestion issue, though it still took quite a bit of time to read in the data (just shy of three minutes, in one particular instance). This is still a marked improvement from the 10+ minutes elapsed while running the prior cell. 
+Selecting a smaller subset of columns did improve our ingestion issue, though it still took quite a bit of time to read in the data (just shy of three minutes, in one particular instance). This is still a marked improvement from the 10+ minutes elapsed while running the prior cell. Ultimately, only selecting the columns that will be required for subsequent analyses is an excellent strategy when dealing with large datasets, but if runtime issues persist, more memory-efficient ingestion processes should be considered. After all, the function is still loading all the data into memory, which is ideal for smaller csv files but may be too time and memory-intensive for particularly large files. As a result, partitioning files via `parquet` may be more optimal and a better use of time. 
 
 ### Q2.3 Ingest a subset of `labevents.csv.gz`
 
@@ -373,7 +374,10 @@ In later exercises, we are interested in the vitals for ICU patients: heart rate
 Document the steps and show code. Display the number of rows and the first 10 rows of the result tibble.
 **Solution**: Ingest and Filter ChartEvents
 
-We will utilize `Apache Arrow` to efficiently write this dataset as a `parquet` file. Next, we will select the four key columns we specified in previous exercise. In this step, we will also be filtering for only the relevant vital measurements as specified above. The code below contains comments specifying each step:
+We will utilize `Apache Arrow` to efficiently write this dataset as a `parquet` file. Next, we will select the four key columns we specified in previous exercise. In this step, we will also be filtering for only the relevant vital measurements as specified above. In detail, here is the process that occurs below: 
+- We utilize `arrow::write_dataset` to create our `parquet` file format from our `csv.gz` file. We specify the file path and will utilize this `parquet` file folder in subsequent steps. 
+- We create `chartevents_filtered`, first referencing our `chartevents.parquet` file path we established in the previous segment of code. We filter this dataset using `dplyr` methods, the first of which involves using `select` to specify columns of interest. These are the same four columns we have been using across these exercises. We proceed to `filter` the rows for the particular vital measurements specified above. We then sort using `arrange`, by three of our four columns, such that the first ten lines of our resulting dataset will be identical to those in previous exercises. Lastly, we aggregate all of this information into our new, filtered dataset using `collect`.
+- We obtain the number of rows in our `chartevents_filtered` dataset using `nrow`. We display the first ten rows of the dataset using `head`. 
 
 ```{r}
 #| eval: false
