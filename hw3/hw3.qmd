@@ -360,28 +360,26 @@ chartevents_viz <- chartevents_viz %>%
 ```
 
 ```{r fig.width=10, fig.height=6}
-
-
 ggplot(chartevents_viz, aes(x = charttime, y = valuenum, color = abbreviation,
                             group = interaction(stay_id, abbreviation))) +
   geom_line(linewidth = 1) +  
   geom_point(size = 2) +  
 
-  facet_grid(abbreviation ~ stay_id, scales = "free", switch = "y") +  
+  
+  facet_grid(rows = vars(abbreviation), cols = vars(stay_id), scales = "free") +  
 
   scale_x_datetime(
     breaks = seq(
-      floor_date(min(chartevents_viz$charttime, na.rm = TRUE), unit = "6 hours"), 
-      ceiling_date(max(chartevents_viz$charttime, na.rm = TRUE), unit = "6 hours"), 
-      by = "6 hours"
+      floor_date(min(chartevents_viz$charttime, na.rm = TRUE), unit = "3 hours"), 
+      ceiling_date(max(chartevents_viz$charttime, na.rm = TRUE), unit = "3 hours"), 
+      by = "3 hours"
     ),
     labels = function(x) {
-      # Only show every other tick label
-      labels <- format(x, "%b %d %H:%M")
-      labels[seq(1, length(labels), 2)] <- ""
+      labels <- format(x, "%b %d %H:%M")  
+      labels[seq(2, length(labels), 2)] <- ""  
       return(labels)
     }
-  ) +  
+  )  +  
 
   scale_color_manual(values = c(
     "HR" = "#E74C3C",       
@@ -399,8 +397,8 @@ ggplot(chartevents_viz, aes(x = charttime, y = valuenum, color = abbreviation,
 
   theme_minimal() +
   theme(
-    strip.text.x = element_text(face = "bold", size = 14, color = "white"),
-    strip.text.y = element_text(face = "bold", size = 12),
+    strip.text.x = element_text(face = "bold", size = 14, color = "white"),  
+    strip.text.y.right = element_text(face = "bold", size = 12, color = 'white'),  
     strip.background = element_rect(fill = "gray50", color = "gray50"),  
     strip.placement = "outside",
     panel.grid.major = element_line(color = "gray80"), 
