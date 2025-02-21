@@ -94,15 +94,21 @@ We first slice off our demographic information and label it `patient_info`. Next
 # Prepare patient demographics
 patient_info_viz <- patients %>%
   filter(subject_id == subjid) %>%
-  select(subject_id, gender, anchor_age) %>%  # Get gender & age from patients
+  select(subject_id,
+         gender,
+         anchor_age) %>%  # Get gender & age from patients
   left_join(
-    admissions %>% select(subject_id, race),  # Get race from admissions
-    by = "subject_id"
+    admissions %>% select(
+      subject_id,
+      race),  # Get race from admissions
+    by = 'subject_id'
   ) %>%
   slice(1)
 # Format gender properly
 patient_info_viz <- patient_info_viz %>%
-  mutate(gender = ifelse(gender == "M", "Male", "Female"),
+  mutate(gender = ifelse(gender == 'M',
+                         'Male',
+                         'Female'),
          race = str_to_title(race))
 
 # Prepare admissions_viz info
@@ -144,14 +150,14 @@ adt_events_viz <- bind_rows(
 # Account for missing care_unit values
 adt_events_viz <- adt_events_viz %>%
   mutate(
-    careunit = ifelse(is.na(careunit) | careunit == "",
-                      "UNKNOWN",
+    careunit = ifelse(is.na(careunit) | careunit == '',
+                      'UNKNOWN',
                       careunit)
   )
 # Account for ICU/CCU Status 
 adt_events_viz <- adt_events_viz %>%
   mutate(
-    is_icu_ccu = ifelse(str_detect(str_to_lower(careunit), "icu|ccu"), "ICU/CCU", "Other")  # ✅ Matches "icu" or "ccu"
+    is_icu_ccu = ifelse(str_detect(str_to_lower(careunit), 'icu|ccu'), 'ICU/CCU', 'Other')  #Matches 'icu' or 'ccu'
   )
 ```
 Now we have organized `Admits, Transfers, and Discharges (ADT)`. We will proceed to prepare our lab events, which correspond to crosses in our visualization. To do this, we label an `event_type`, convert `charttime` to `UTC`, and select columns of interest. We can proceed to work with procedure information, which relies on`procedures_icd` as well as `d_icd_procedures`. We note that exact timestamps are not provided in the `procedures_icd` dataframe (dates only), so they take on a default value of `YYYY-MM-DD 00:00:00`. 
@@ -161,7 +167,8 @@ Now we have organized `Admits, Transfers, and Discharges (ADT)`. We will proceed
 labevents_viz <- labevents %>%
   mutate(
     event_type = 'Lab',
-    charttime = with_tz(ymd_hms(charttime), 'UTC')
+    charttime = with_tz(ymd_hms(charttime),
+                        'UTC')
   ) %>%
   select(
     subject_id,
@@ -176,7 +183,8 @@ procedures_viz <- procedures_icd %>%
   mutate(
     event_type = 'Procedure',
     procedure_time = ymd(chartdate),
-    procedure_desc = coalesce(long_title, 'Unknown')
+    procedure_desc = coalesce(long_title,
+                              'Unknown')
     ) %>%
   select(
     subject_id,
@@ -187,10 +195,11 @@ procedures_viz <- procedures_icd %>%
 
 top_diagnoses <- diagnoses_icd %>%
   filter(subject_id == subjid) %>%
-  left_join(d_icd_diagnoses, by = "icd_code") %>%
-  arrange(seq_num) %>%              # sort by the sequence number (primary diagnoses first)
-  distinct(long_title, .keep_all = TRUE) %>%  # keep only one row per unique diagnosis
-  slice_head(n = 3) %>%             # take the top 3 unique diagnoses
+  left_join(d_icd_diagnoses, by = 'icd_code') %>%
+  arrange(seq_num) %>%              # sort by sequence number
+  distinct(long_title,
+           .keep_all = TRUE) %>%  # keep only one row per unique diagnosis
+  slice_head(n = 3) %>%             # take top 3 unique diagnoses
   pull(long_title)
 
 
@@ -199,26 +208,38 @@ Lastly, we will combine all of our information before creating the visualization
 ```{r}
 timeline_events_viz <- bind_rows(
   adt_events_viz,
-  labevents_viz %>% rename(admittime = charttime),
-  procedures_viz %>% rename(admittime = procedure_time)
+  labevents_viz %>% 
+    rename(admittime = charttime),
+  procedures_viz %>% 
+    rename(admittime = procedure_time)
 ) %>%
   arrange(admittime)
 
 # Factorize event_type to ensure proper ordering
 timeline_events_viz$event_type <- factor(
   timeline_events_viz$event_type, 
-  levels = c("ADT", "Lab", "Procedure"),  # ✅ Correct order: ADT → Lab → Procedure
+  levels = c('ADT',
+             'Lab',
+             'Procedure'),  # Correct order: ADT → Lab → Procedure
   ordered = TRUE
 )
 
 
   # Format title with demographics
 title_text <- paste0(
-  "Patient ", patient_info_viz$subject_id, ", ", patient_info_viz$gender, 
-  ", ", patient_info_viz$anchor_age, " years old, ", patient_info_viz$race
+  'Patient ',
+  patient_info_viz$subject_id,
+  ', ',
+  patient_info_viz$gender, 
+  ", ",
+  patient_info_viz$anchor_age,
+  ' years old, ',
+  patient_info_viz$race
 )
 # Format subtitle (line break for each diagnosis)
-subtitle_text <- paste(top_diagnoses, collapse = "\n") 
+subtitle_text <- paste(
+  top_diagnoses, 
+  collapse = '\n') 
 ```
 Now it is time for visualization.
 
@@ -227,9 +248,9 @@ Now it is time for visualization.
 timeline_events_viz <- timeline_events_viz %>%
   mutate(
     y_position = case_when(
-      event_type == "ADT" ~ 3,
-      event_type == "Procedure" ~ 1,
-      event_type == "Lab" ~ 2,
+      event_type == 'ADT' ~ 3,
+      event_type == 'Procedure' ~ 1,
+      event_type == 'Lab' ~ 2,
       TRUE ~ NA_real_
     )
   )
@@ -237,18 +258,22 @@ timeline_events_viz <- timeline_events_viz %>%
 ggplot(data = timeline_events_viz) +
   # 1) ADT as segments at y_position = 3
   geom_segment(
-    data = timeline_events_viz %>% filter(event_type == "ADT"),
+    data = timeline_events_viz %>% 
+      filter(event_type == 'ADT'),
     aes(
-      x = admittime, xend = dischtime,
-      y = y_position, yend = y_position,
+      x = admittime,
+      xend = dischtime,
+      y = y_position,
+      yend = y_position,
       color = careunit,
-      linewidth = is_icu_ccu == "ICU/CCU"  # Thicker lines for ICU/CCU
+      linewidth = is_icu_ccu == 'ICU/CCU'  # Thicker lines for ICU/CCU
     )
   ) +
   
   # 2) Procedure as points at y_position = 1
   geom_point(
-    data = timeline_events_viz %>% filter(event_type == "Procedure"),
+    data = timeline_events_viz %>% 
+      filter(event_type == 'Procedure'),
     aes(
       x = admittime, 
       y = y_position, 
@@ -259,49 +284,54 @@ ggplot(data = timeline_events_viz) +
   
   # 3) Lab as points at y_position = 2
   geom_point(
-    data = timeline_events_viz %>% filter(event_type == "Lab"),
+    data = timeline_events_viz %>% filter(event_type == 'Lab'),
     aes(
       x = admittime, 
       y = y_position
     ),
-    shape = 3, size = 3, color = "black"  # shape=3 = plus sign
+    shape = 3, size = 3, color = 'black'  # shape=3 = plus sign
   ) +
   
   # 4) Control the x-axis breaks/labels
-  scale_x_datetime(date_breaks = "1 week", date_labels = "%b %d") +
+  scale_x_datetime(date_breaks = '1 week',
+                   date_labels = '%b %d') +
   
   # 5) Manually control the y-axis
   scale_y_continuous(
     name = NULL, 
     breaks = c(1, 2, 3),
     limits = c(0.5, 3.5), 
-    labels = c("Lab", "Procedure", "ADT")  
+    labels = c('Lab',
+               'Procedure',
+               'ADT')  
   ) +
   
   # 6) Title, subtitle, legend labels
   labs(
     title = paste0(
-      "Patient ", patient_info_viz$subject_id, ", ", 
-      patient_info_viz$gender, ", ", 
-      patient_info_viz$anchor_age, " years old, ", 
+      'Patient ', patient_info_viz$subject_id, ', ', 
+      patient_info_viz$gender, ', ', 
+      patient_info_viz$anchor_age, ' years old, ', 
       patient_info_viz$race
     ),
     subtitle = subtitle_text,
-    x = "Calendar Time",
+    x = 'Calendar Time',
     y = NULL,
-    color = "Care Unit",     
-    shape = "Procedure Type" 
+    color = 'Care Unit',     
+    shape = 'Procedure Type' 
   ) +
   
   # 7) Use a theme (you can keep theme_minimal or switch to theme_light)
   theme_minimal() +
   theme(
-    panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
-    panel.grid.major = element_line(color = "gray80"),
+    panel.border = element_rect(color = 'black',
+                                fill = NA,
+                                linewidth = 1),
+    panel.grid.major = element_line(color = 'gray80'),
     panel.grid.minor = element_blank(),
     axis.line = element_blank(),
-    legend.position = "bottom",
-    legend.box = "vertical"
+    legend.position = 'bottom',
+    legend.box = 'vertical'
   ) +
   
   # 8) Control the legend ordering and remove the linewidth legend
@@ -313,7 +343,7 @@ ggplot(data = timeline_events_viz) +
     shape = guide_legend(
       order = 2                              
     ),
-    linewidth = "none"                       
+    linewidth = 'none'                       
   )
 
 
@@ -328,10 +358,11 @@ Do a similar visualization for the patient `10063848`.
 **Solution**:
 First, we must acquire our dataset. Once again, we will borrow this from our previous assignment using a symbolic link, which has been done in the terminal. I reference this file as `chartevents_parquet`.
 Now, we will load in the dataset, filtering for our preselected patient.
+We will attach the abbreviations for vital measurements by performing a join on `itemid` between `chartevents_viz` and `items`. We will convert timezone to UTC to ensure proper formatting for the plot. We now have all of our information aggregated into a singular dataframe, and we can begin plotting.
 ```{r}
 items <- read_csv('~/mimic/icu/d_items.csv.gz')
 chartid <- 10063848
-chartevents_viz <- arrow::open_dataset("chartevents_pq") %>% 
+chartevents_viz <- arrow::open_dataset('chartevents_pq') %>% 
   select(subject_id, itemid, charttime, valuenum, stay_id) %>%  
   filter(subject_id == chartid, 
          itemid %in% c(
@@ -348,115 +379,79 @@ chartevents_viz <- arrow::open_dataset("chartevents_pq") %>%
 chartevents_viz <- chartevents_viz %>%
   left_join(
     items %>% select(itemid, abbreviation), 
-    by = "itemid"
+    by = 'itemid'
   )
 # Fix dates
 chartevents_viz <- chartevents_viz %>%
-  mutate(charttime = with_tz(charttime, "UTC"))  # ✅ Ensure it's UTC
+  mutate(charttime = with_tz(charttime, 'UTC'))  
 
 
 
 
 ```
-
-```{r fig.width=10, fig.height=6}
+In the plotting stage, we specify grouping by both the unique `stay_id` as well as the particular vital measurement being taken (`abbreviation`). We grid our plots such that each row corresponds to its own vital measurement, and each column corresponds to a specific stay. We specify the endpoints of our plots based on the minimum and maximum values in `charttime`, and we specify for line breaks to occur every three hours. Additionally, we specify that labeling should be done on every other xtick, starting with the second xtick. We also specify the manner in which we would like to format timestamps as `%b %d %H:%M`. We match the colors for each vital measurement to the colors in the example plot, and we label axes and titles accordingly. Lastly, we format the strip labels on the x and y axes, such that they are filled with grey and text is white. We specify that we would like the y-axis' strip to be on the right-hand side, while the x-axis' strip remains in its default position on top. We place our strips outside the plot itself, and ensure that x-axis labels are horizontal (as opposed to diagonal). Lastly, we remove the legend for vital measurement, as we have these labels in the y-axis' strip. The code for this procedure is below:
+```{r fig.width=20, fig.height=8}
 ggplot(chartevents_viz, aes(x = charttime, y = valuenum, color = abbreviation,
                             group = interaction(stay_id, abbreviation))) +
   geom_line(linewidth = 1) +  
   geom_point(size = 2) +  
 
   
-  facet_grid(rows = vars(abbreviation), cols = vars(stay_id), scales = "free") +  
+  facet_grid(rows = vars(abbreviation), cols = vars(stay_id), scales = 'free') +  
 
   scale_x_datetime(
     breaks = seq(
-      floor_date(min(chartevents_viz$charttime, na.rm = TRUE), unit = "3 hours"), 
-      ceiling_date(max(chartevents_viz$charttime, na.rm = TRUE), unit = "3 hours"), 
-      by = "3 hours"
+      floor_date(min(chartevents_viz$charttime, na.rm = TRUE), unit = '3 hours'), 
+      ceiling_date(max(chartevents_viz$charttime, na.rm = TRUE), unit = '3 hours'), 
+      by = '3 hours'
     ),
     labels = function(x) {
-      labels <- format(x, "%b %d %H:%M")  
-      labels[seq(2, length(labels), 2)] <- ""  
+      labels <- format(x, '%b %d %H:%M')  
+      labels[seq(2, length(labels), 2)] <- ''  
       return(labels)
     }
   )  +  
 
   scale_color_manual(values = c(
-    "HR" = "#E74C3C",       
-    "NBPm" = "#9A8700",      
-    "NBPs" = "#009E73",      
-    "RR" = "#009ADE",        
-    "Temperature F" = "#E377C2"  
+    'HR' = '#E74C3C',       
+    'NBPm' = '#9A8700',      
+    'NBPs' = '#009E73',      
+    'RR' = '#009ADE',        
+    'Temperature F' = '#E377C2'  
   )) +  
 
   labs(
-    title = paste0("Patient ", chartid, " ICU stays - Vitals"),
-    x = "Calendar Time",
-    y = "Vital Value"
+    title = paste0('Patient ', chartid, ' ICU stays - Vitals'),
+    x = 'Calendar Time',
+    y = 'Vital Value'
   ) +
 
   theme_minimal() +
   theme(
-    strip.text.x = element_text(face = "bold", size = 14, color = "white"),  
-    strip.text.y.right = element_text(face = "bold", size = 12, color = 'white'),  
-    strip.background = element_rect(fill = "gray50", color = "gray50"),  
-    strip.placement = "outside",
+    strip.text.x = element_text(face = 'bold', size = 14, color = 'white'),  
+    strip.text.y.right = element_text(face = 'bold', size = 12, color = 'white'),  
+    strip.background = element_rect(fill = 'gray50', color = 'gray50'),  
+    strip.placement = 'outside',
+
+    # Add a thin border around each facet panel
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5), 
+
+    # Add space between facet panels
+    panel.spacing = unit(0.2, 'cm'), 
+
     panel.grid.major = element_line(color = "gray80"), 
     panel.grid.minor = element_blank(),
 
-    # Make X-Axis Labels Horizontal
     axis.text.x = element_text(angle = 0, hjust = 0.5, size = 10),  
     
-    # Remove "Vital Sign" Legend
-    legend.position = "none"  
-  )
+    # Remove 'Vital Sign' Legend
+    legend.position = 'none'  
+)
 
 
 
 ```
-Now try it with the requested patient id: 
 
-```{r fig.width=10, fig.height=6}
-ggplot(chartevents_viz, aes(x = charttime, y = valuenum, color = abbreviation,
-                            group = interaction(stay_id, abbreviation))) +
-  geom_line(linewidth = 1) +  
-  geom_point(size = 2) +  
-
-  # ✅ Move vital signs to the right while keeping ICU stays at the top
-  facet_grid(rows = vars(abbreviation), cols = vars(stay_id), scales = "free") +  
-
-  # ✅ Remove explicit scale_x_datetime to use default ggplot ticks
-  scale_color_manual(values = c(
-    "HR" = "#E74C3C",       
-    "NBPm" = "#9A8700",      
-    "NBPs" = "#009E73",      
-    "RR" = "#009ADE",        
-    "Temperature F" = "#E377C2"  
-  )) +  
-
-  labs(
-    title = paste0("Patient ", chartid, " ICU stays - Vitals"),
-    x = "Calendar Time",
-    y = "Vital Value"
-  ) +
-
-  theme_minimal() +
-  theme(
-    strip.text.x = element_text(face = "bold", size = 14, color = "white"),  # ✅ ICU stay labels remain on top
-    strip.text.y.right = element_text(face = "bold", size = 12, color = 'white'),  # ✅ Move vital signs to the right
-    strip.background = element_rect(fill = "gray50", color = "gray50"),  
-    strip.placement = "outside",
-    panel.grid.major = element_line(color = "gray80"), 
-    panel.grid.minor = element_blank(),
-
-    # ✅ Use default tick spacing on both axes
-    axis.text.x = element_text(angle = 0, hjust = 0.5, size = 10),  
-    
-    # ✅ Remove "Vital Sign" Legend
-    legend.position = "none"  
-  )
-
-```
 ## Q2. ICU stays
 
 `icustays.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/icu/icustays/>) contains data about Intensive Care Units (ICU) stays. The first 10 lines are
