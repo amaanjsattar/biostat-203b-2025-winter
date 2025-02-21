@@ -26,6 +26,7 @@ library(memuse)
 library(pryr)
 library(R.utils)
 library(tidyverse)
+library(lubridate)
 ```
 
 Display your machine memory.
@@ -48,6 +49,224 @@ Do a similar visualization for the patient with `subject_id` 10063848 using ggpl
 
 Hint: We need to pull information from data files `patients.csv.gz`, `admissions.csv.gz`, `transfers.csv.gz`, `labevents.csv.gz`, `procedures_icd.csv.gz`, `diagnoses_icd.csv.gz`, `d_icd_procedures.csv.gz`, and `d_icd_diagnoses.csv.gz`. For the big file `labevents.csv.gz`, use the Parquet format you generated in Homework 2. For reproducibility, make the Parquet folder `labevents_pq` available at the current working directory `hw3`, for example, by a symbolic link. Make your code reproducible.
 
+**Solution**: First, we will create a symbolic link to the `.parquet` file we created in`HW2`. This is done in the terminal. 
+
+Since we want to make sure that our code will be reproducible with any pre-specified `subject_id`, we will parameterize this value: We will load the `labevents` dataset via our symbolic link, filtering it by our `subject_id` of interest. We collect the values and are now ready to load in the other datasets from which we will be drawing information. 
+```{r}
+# Specify the subject id of interest
+subjid <- 10001217  
+
+# Create labevents data.frame
+labevents <- arrow::open_dataset('labevents_pq') %>% 
+  filter(subject_id == subjid) %>% 
+  collect()
+
+# Get patient data
+patients <- read_csv('~/mimic/hosp/patients.csv.gz') %>%
+  filter(subject_id == subjid)
+
+# Get admissions data
+admissions <- read_csv('~/mimic/hosp/admissions.csv.gz') %>%
+  filter(subject_id == subjid)
+
+# Get transfers data
+transfers <- read_csv('~/mimic/hosp/transfers.csv.gz') %>%
+  filter(subject_id == subjid)
+
+# Get procedures_icd data
+procedures_icd <- read_csv('~/mimic/hosp/procedures_icd.csv.gz') %>%
+  filter(subject_id == subjid)
+
+# Get diagnoses_icd data
+diagnoses_icd <- read_csv('~/mimic/hosp/diagnoses_icd.csv.gz') %>%
+  filter(subject_id == subjid)
+
+# Get d_icd_procedures data
+d_icd_procedures <- read_csv('~/mimic/hosp/d_icd_procedures.csv.gz') 
+
+# Get d_icd_diagnoses data
+d_icd_diagnoses <- read_csv('~/mimic/hosp/d_icd_diagnoses.csv.gz')
+```
+
+Now, we will begin organizing our data. From `admissions`, we know we will need `admittime`, `dischtime`, and to specify the event type as `ADT`. 
+We first slice off our demographic information and label it `patient_info`. Next, we add the `event_type` of `ADT` to our admissions dataframe, properly format `admittime` and `dischtime`, and select our columns of interest. 
+```{r}
+# Prepare patient demographics
+patient_info_viz <- patients %>%
+  filter(subject_id == subjid) %>%
+  select(subject_id, gender, anchor_age) %>%  # Get gender & age from patients
+  left_join(
+    admissions %>% select(subject_id, race),  # Get race from admissions
+    by = "subject_id"
+  ) %>%
+  slice(1)
+# Format gender properly
+patient_info_viz <- patient_info_viz %>%
+  mutate(gender = ifelse(gender == "M", "Male", "Female"),
+         race = str_to_title(race))
+
+# Prepare admissions_viz info
+admissions_viz <- admissions %>%
+  mutate(
+    event_type = 'ADT',
+    admittime = ymd_hms(admittime),
+    dischtime = ymd_hms(dischtime)
+  ) %>%
+  select(
+    subject_id,
+    admittime,
+    dischtime,
+    event_type
+  )
+
+# prepare transfers_viz info
+transfers_viz <- transfers %>%
+  mutate(
+    event_type = 'ADT',
+    admittime = ymd_hms(intime),
+    dischtime = ymd_hms(outtime)
+  ) %>%
+  select(
+    subject_id,
+    admittime,
+    dischtime,
+    event_type,
+    careunit
+  )
+
+# Merge admissions and transfers information
+adt_events_viz <- bind_rows(
+  admissions_viz,
+  transfers_viz
+) %>%
+  arrange(admittime)
+
+# Account for missing care_unit values
+adt_events_viz <- adt_events_viz %>%
+  mutate(
+    careunit = ifelse(is.na(careunit) | careunit == "",
+                      "UNKNOWN",
+                      careunit)
+  )
+# Account for ICU/CCU Status 
+adt_events_viz <- adt_events_viz %>%
+  mutate(
+    is_icu_ccu = ifelse(str_detect(str_to_lower(careunit), "icu|ccu"), "ICU/CCU", "Other")  # ✅ Matches "icu" or "ccu"
+  )
+```
+Now we have organized `Admits, Transfers, and Discharges (ADT)`. We will proceed to prepare our lab events, which correspond to crosses in our visualization. To do this, we label an `event_type`, convert `charttime` to `UTC`, and select columns of interest. We can proceed to work with procedure information, which relies on`procedures_icd` as well as `d_icd_procedures`. We note that exact timestamps are not provided in the `procedures_icd` dataframe (dates only), so they take on a default value of `YYYY-MM-DD 00:00:00`. 
+
+```{r}
+# Prepare labevents_viz
+labevents_viz <- labevents %>%
+  mutate(
+    event_type = 'Lab',
+    charttime = with_tz(ymd_hms(charttime), 'UTC')
+  ) %>%
+  select(
+    subject_id,
+    charttime,
+    event_type
+  )
+
+# Prepare procedures
+procedures_viz <- procedures_icd %>%
+  left_join(d_icd_procedures,
+            by = 'icd_code') %>%
+  mutate(
+    event_type = 'Procedure',
+    procedure_time = ymd(chartdate),
+    procedure_desc = coalesce(long_title, 'Unknown')
+    ) %>%
+  select(
+    subject_id,
+    procedure_time,
+    event_type,
+    procedure_desc
+  )
+
+top_diagnoses <- diagnoses_icd %>%
+  filter(subject_id == subjid) %>%
+  left_join(d_icd_diagnoses, by = "icd_code") %>%
+  arrange(seq_num) %>%  # ✅ Sort by sequence number (lower = more primary)
+  slice_head(n = 3) %>%
+  pull(long_title)
+
+
+
+```
+Lastly, we will combine all of our information before creating the visualization.  We will also set up some preliminaries for the visualization process. First, we factorize the event type, as we are ordering the chart based on it. Secondly, we will create the title text based on our patient demographic information. We ensure that all columns we are binding on are named uniformly, and we arrange our aggregated data.
+```{r}
+timeline_events_viz <- bind_rows(
+  adt_events_viz,
+  labevents_viz %>% rename(admittime = charttime),
+  procedures_viz %>% rename(admittime = procedure_time)
+) %>%
+  arrange(admittime)
+
+# Factorize event_type to ensure proper ordering
+timeline_events_viz$event_type <- factor(
+  timeline_events_viz$event_type, 
+  levels = c("ADT", "Lab", "Procedure"),  # ✅ Correct order: ADT → Lab → Procedure
+  ordered = TRUE
+)
+
+
+  # Format title with demographics
+title_text <- paste0(
+  "Patient ", patient_info_viz$subject_id, ", ", patient_info_viz$gender, 
+  ", ", patient_info_viz$anchor_age, " years old, ", patient_info_viz$race
+)
+# Format subtitle (line break for each diagnosis)
+subtitle_text <- paste(top_diagnoses, collapse = "\n") 
+```
+Now it is time for visualization.
+
+```{r fig.width=12, fig.height=6}
+ggplot(data = timeline_events_viz) +
+  geom_segment(
+    data = timeline_events_viz %>% filter(event_type == "ADT"),
+    aes(
+      x = admittime, xend = dischtime,
+      y = event_type, yend = event_type,
+      color = careunit,
+      linewidth = is_icu_ccu == "ICU/CCU"  # ✅ ICU/CCU gets a larger linewidth
+    )
+  ) +
+  
+  geom_point(
+    data = timeline_events_viz %>% filter(event_type == "Lab"),
+    aes(x = admittime, y = event_type),
+    shape = 3, size = 3, color = "black"
+  ) +
+
+  geom_point(
+    data = timeline_events_viz %>% filter(event_type == "Procedure"),
+    aes(x = admittime, y = event_type, shape = procedure_desc),
+    size = 3, color = "black"
+  ) +
+
+  scale_x_datetime(date_breaks = "1 week", date_labels = "%b %d") +
+  
+  labs(
+    title = paste0(
+      "Patient ", patient_info_viz$subject_id, ", ", patient_info_viz$gender, 
+      ", ", patient_info_viz$anchor_age, " years old, ", patient_info_viz$race
+    ),
+    subtitle = subtitle_text,
+    x = "Calendar Time",
+    y = NULL,
+    color = "Care Unit",
+    shape = "Procedure Type"
+  ) +
+
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.box = "vertical"
+  )
+
+```
 ### Q1.2 ICU stays
 
 ICU stays are a subset of ADT history. This figure shows the vitals of the patient `10001217` during ICU stays. The x-axis is the calendar time, and the y-axis is the value of the vital. The color of the line represents the type of vital. The facet grid shows the abbreviation of the vital and the stay ID.
