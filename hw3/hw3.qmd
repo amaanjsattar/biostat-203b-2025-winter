@@ -350,20 +350,37 @@ chartevents_viz <- chartevents_viz %>%
     items %>% select(itemid, abbreviation), 
     by = "itemid"
   )
+# Fix dates
+chartevents_viz <- chartevents_viz %>%
+  mutate(charttime = with_tz(charttime, "UTC"))  # ✅ Ensure it's UTC
+
+
+
+
 ```
 
-```{r}
+```{r fig.width=10, fig.height=6}
+
+
 ggplot(chartevents_viz, aes(x = charttime, y = valuenum, color = abbreviation,
                             group = interaction(stay_id, abbreviation))) +
   geom_line(linewidth = 1) +  
   geom_point(size = 2) +  
 
-
   facet_grid(abbreviation ~ stay_id, scales = "free", switch = "y") +  
 
   scale_x_datetime(
-    date_breaks = "3 hours",   
-    date_labels = "%b %d %H:%M"
+    breaks = seq(
+      floor_date(min(chartevents_viz$charttime, na.rm = TRUE), unit = "6 hours"), 
+      ceiling_date(max(chartevents_viz$charttime, na.rm = TRUE), unit = "6 hours"), 
+      by = "6 hours"
+    ),
+    labels = function(x) {
+      # Only show every other tick label
+      labels <- format(x, "%b %d %H:%M")
+      labels[seq(1, length(labels), 2)] <- ""
+      return(labels)
+    }
   ) +  
 
   scale_color_manual(values = c(
@@ -377,8 +394,7 @@ ggplot(chartevents_viz, aes(x = charttime, y = valuenum, color = abbreviation,
   labs(
     title = paste0("Patient ", chartid, " ICU stays - Vitals"),
     x = "Calendar Time",
-    y = "Vital Value",
-    color = "Vital Sign"
+    y = "Vital Value"
   ) +
 
   theme_minimal() +
@@ -389,8 +405,15 @@ ggplot(chartevents_viz, aes(x = charttime, y = valuenum, color = abbreviation,
     strip.placement = "outside",
     panel.grid.major = element_line(color = "gray80"), 
     panel.grid.minor = element_blank(),
-    axis.text.x = element_text(angle = 30, hjust = 1, size = 10)  
+
+    # Make X-Axis Labels Horizontal
+    axis.text.x = element_text(angle = 0, hjust = 0.5, size = 10),  
+    
+    # Remove "Vital Sign" Legend
+    legend.position = "none"  
   )
+
+
 
 ```
 
