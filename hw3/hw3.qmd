@@ -521,6 +521,27 @@ zcat < ~/mimic/hosp/admissions.csv.gz | head
 ### Q3.1 Ingestion
 
 Import `admissions.csv.gz` as a tibble `admissions_tble`.
+**Solution**: We will import the data and then ensure that all data types are properly formatted.
+```{r}
+admissions_tble <- read_csv('~/mimic/hosp/admissions.csv.gz')
+
+# Convert IDs to integers & adjust time zones
+admissions_tble <- admissions_tble %>%
+  mutate(
+    subject_id = as.integer(subject_id),
+    hadm_id = as.integer(hadm_id),
+    admittime = with_tz(admittime,
+                        'UTC'),  
+    dischtime = with_tz(dischtime,
+                        'UTC'),
+    deathtime = with_tz(deathtime,
+                        'UTC'),
+    edregtime = with_tz(edregtime,
+                        'UTC'),
+    edouttime = with_tz(edouttime,
+                        'UTC')
+  )
+```
 
 ### Q3.2 Summary and visualization
 
@@ -531,6 +552,124 @@ Summarize the following information by graphics and explain any patterns you see
 - admission minute (anything unusual?)  
 - length of hospital stay (from admission to discharge) (anything unusual?)  
 
+**Solution**: 
+
+Visualization 1: First, we will visualize the number of admissions per patient. We count the number of unique `hadm_id` values per each unique `subject_id`, and proceed to count the number of subject_ids corresponding to each observed number of admissions. We do this in a very similar manner to what was done in the previous exercise. Next, we create our visualization, which can be a bar chart. We choose the bin labels to occur for every 5th index, and we make them diagonal for readability. We notice something quite interesting, which is the presence of extreme right-skew in our data. The overwhelming majority of patients were only admitted once, with virtually all of the patients having less than ten admissions corresponding to their subject_id. However, we see that an extremely miniscule number of patients appear to have an extremely large number of hospital admissions, with some having upwards of 100 admissions. 
+
+```{r}
+# Get number of unique hadm_id for each subject_id
+admissions_per_patient <- admissions_tble %>%
+  group_by(subject_id) %>%
+  summarise(
+    num_admissions = n_distinct(hadm_id)) %>%
+  count(num_admissions,
+        name = 'num_patients') %>%
+  arrange(num_admissions)
+
+# Visualize number of admissions stays patient
+ggplot(admissions_per_patient,
+       aes(x = factor(num_admissions),
+           y = num_patients)) +
+  geom_bar(stat = 'identity',
+           fill = 'steelblue',
+           color = 'black') +
+  
+  # Reduce x-axis labels (show every few bins)
+  scale_x_discrete(breaks = function(x) x[seq(0, 
+                                              length(x),
+                                              by = 5)]) +
+
+  labs(
+    title = 'Number of Admissions per Patient',
+    x = 'Number of Admissions',
+    y = 'Number of Patients'
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45,
+                               hjust = 1)  # Rotate for readability
+  )
+```
+
+Visualization 2: Next, we will visualize the distribution of admission hour, i.e. at what time of day patients were admitted to the hospital. To do this, we must extract the hour from each `admittime` in the dataset, and plot a bar chart. We do notice something interesting when we plot this distribution; there is a considerable spike in admissions at `hour = 0`, which would correspond to `midnight UTC`. One possible explanation for this phenomenon may be the convention in the data collection process. Namely, it is possible that while some of these patients were indeed admitted around midnight, the data collection process may have involved using `hour = 0` as a default value for when admit time was left unspecified. I would suspect that many patients would share the exact admit time in that case (in terms of hour and minute), since it would serve as a `placeholder value`. 
+```{r}
+# Extract admission hour
+admissions_tble <- admissions_tble %>%
+  mutate(admit_hour = hour(admittime))  # Extract hour (0-23)
+
+# Plot histogram of admission hours
+ggplot(admissions_tble, aes(x = admit_hour)) +
+  geom_histogram(binwidth = 1,
+                 fill = 'violet',
+                 color = 'black') +
+  
+  # Custom x-axis breaks (every 2 hours to reduce clutter)
+  scale_x_continuous(breaks = seq(0, 23, by = 2)) +  
+
+  labs(
+    title = 'Distribution of Admission Hours (UTC)',
+    x = 'Hour of Admission (0-23)',
+    y = 'Number of Admissions'
+  ) +
+  theme_minimal()
+```
+Visualization 3: We next plot the distribution of minute of admission, i.e. how far along in any given hour patients were admitted to the hospital. To do this, we must extract the minute value from our `admittime` timestamps and plot its distribution. Again, we observe something rather interesting in this plot. It appears that a large spike in minute of admission occurs at minute 0, which may be for the same reason we observed the spike at 0 in hour of admission. Namely, this may serve as a placeholder value for patients whose `admittime` is unknown. However, the spikes at 15-minute increments are also particularly interesting. We see that starting at 0, there is a spike in the number of admits in 15-minute increments (spikes at 0, 15, 30, and 45). This suggests that recorded times may be rounded to the nearest fifteen minutes, possibly for convenience. For instance, if a hospital admit came in two minutes ago and it is now 3:20, the data collector may still note the admission time as 3:15 despite it not being an exact metric. It also makes sense that 0 will be the mode of this distribution, since people may regress admit time back to 0 for any patients arriving within a certain vicinity of a new hour (e.g. patients arriving at 11:55 or 12:05 both having their admission times rounded to 12:00). 
+```{r}
+# Extract admission minute
+admissions_tble <- admissions_tble %>%
+  mutate(admit_minute = minute(admittime))  # Extract minute (0-59)
+
+# Plot histogram of admission minutes
+ggplot(admissions_tble, aes(x = admit_minute)) +
+  geom_histogram(binwidth = 1, fill = "dodgerblue", color = "black") +
+  
+  # Custom x-axis breaks (every 5 minutes to reduce clutter)
+  scale_x_continuous(breaks = seq(0, 59, by = 5)) +  
+
+  labs(
+    title = 'Distribution of Admission Minutes',
+    x = 'Minute of Admission (0-59)',
+    y = 'Number of Admissions'
+  ) +
+  theme_minimal()
+
+
+```
+Visualization 4: Lastly, we will plot the distribution of length of hospital stay, from admit to discharge. We will need to create a new variable `length_of_stay` that represents the difference between `dischtime` and `admittime` in days. Then, we can follow our similar procedure of plotting. We once again observe something very interesting, which is the presence of extreme right-skew in our plot. Once again, it appears that the vast majority of patients had a length of stay totaling around 1 day, and most left within a week of their stay. In fact, nearly all patients completed their stay within 25 days. The presence of right-skew is likely a byproduct of an extremely small minority of patients having extremely prolonged stays in the hospital. Some patients may have their treatment regime be entirely inpatient and charted along the span of months and years rather than days. Because this is not the situation for a vast majority of patients, we see the extremely large right-tail present in our data. 
+```{r}
+# Compute length_of_stay in days
+admissions_tble <- admissions_tble %>%
+  mutate(length_of_stay = as.numeric(difftime(dischtime,
+                                              admittime,
+                                              units = 'days')))
+
+# Compute length_of_stay in days
+admissions_tble <- admissions_tble %>%
+  mutate(length_of_stay = as.numeric(difftime(dischtime,
+                                              admittime,
+                                              units = 'days')))
+
+# Plot histogram of Length of Stay
+ggplot(admissions_tble,
+       aes(x = length_of_stay)) +
+  geom_histogram(binwidth = 5,
+                 fill = 'forestgreen',
+                 color = 'black') +
+
+  scale_x_continuous(breaks = seq(0,
+                                  ceiling(max(admissions_tble$length_of_stay,
+                                              na.rm = TRUE)),
+                                  by = 25)) +
+
+  labs(
+    title = 'Distribution of Length of Hospital Stay',
+    x = 'Length of Stay (Days)',
+    y = 'Number of Admissions'
+  ) +
+  theme_minimal()
+
+
+```
 According to the [MIMIC-IV documentation](https://mimic.mit.edu/docs/iv/about/concepts/#date-shifting), 
 
 > All dates in the database have been shifted to protect patient confidentiality. Dates will be internally consistent for the same patient, but randomly distributed in the future. Dates of birth which occur in the present time are not true dates of birth. Furthermore, dates of birth which occur before the year 1900 occur if the patient is older than 89. In these cases, the patient’s age at their first admission has been fixed to 300.
