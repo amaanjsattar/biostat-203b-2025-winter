@@ -54,7 +54,7 @@ Hint: We need to pull information from data files `patients.csv.gz`, `admissions
 Since we want to make sure that our code will be reproducible with any pre-specified `subject_id`, we will parameterize this value: We will load the `labevents` dataset via our symbolic link, filtering it by our `subject_id` of interest. We collect the values and are now ready to load in the other datasets from which we will be drawing information. 
 ```{r}
 # Specify the subject id of interest
-subjid <- 10001217  
+subjid <- 10063848  
 
 # Create labevents data.frame
 labevents <- arrow::open_dataset('labevents_pq') %>% 
@@ -188,10 +188,10 @@ procedures_viz <- procedures_icd %>%
 top_diagnoses <- diagnoses_icd %>%
   filter(subject_id == subjid) %>%
   left_join(d_icd_diagnoses, by = "icd_code") %>%
-  arrange(seq_num) %>%  # ✅ Sort by sequence number (lower = more primary)
-  slice_head(n = 3) %>%
+  arrange(seq_num) %>%              # sort by the sequence number (primary diagnoses first)
+  distinct(long_title, .keep_all = TRUE) %>%  # keep only one row per unique diagnosis
+  slice_head(n = 3) %>%             # take the top 3 unique diagnoses
   pull(long_title)
-
 
 
 ```
@@ -223,6 +223,15 @@ subtitle_text <- paste(top_diagnoses, collapse = "\n")
 Now it is time for visualization.
 
 ```{r fig.width=12, fig.height=6}
+timeline_events_viz <- timeline_events_viz %>%
+  mutate(event_type = factor(
+    event_type, 
+    levels = c("ADT", "Procedure", "Lab"), 
+    ordered = TRUE
+  ))
+
+
+
 ggplot(data = timeline_events_viz) +
   geom_segment(
     data = timeline_events_viz %>% filter(event_type == "ADT"),
@@ -230,7 +239,7 @@ ggplot(data = timeline_events_viz) +
       x = admittime, xend = dischtime,
       y = event_type, yend = event_type,
       color = careunit,
-      linewidth = is_icu_ccu == "ICU/CCU"  # ✅ ICU/CCU gets a larger linewidth
+      linewidth = is_icu_ccu == "ICU/CCU"  # This maps to TRUE/FALSE; ggplot will assign a numeric value.
     )
   ) +
   
@@ -239,13 +248,13 @@ ggplot(data = timeline_events_viz) +
     aes(x = admittime, y = event_type),
     shape = 3, size = 3, color = "black"
   ) +
-
+  
   geom_point(
     data = timeline_events_viz %>% filter(event_type == "Procedure"),
     aes(x = admittime, y = event_type, shape = procedure_desc),
     size = 3, color = "black"
   ) +
-
+  
   scale_x_datetime(date_breaks = "1 week", date_labels = "%b %d") +
   
   labs(
@@ -259,12 +268,17 @@ ggplot(data = timeline_events_viz) +
     color = "Care Unit",
     shape = "Procedure Type"
   ) +
-
+  
   theme_minimal() +
   theme(
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+    panel.grid.major = element_line(color = "gray80"),
+    panel.grid.minor = element_blank(),
+    axis.line = element_blank(),
     legend.position = "bottom",
     legend.box = "vertical"
-  )
+  ) +
+  guides(linewidth = guide_none())  
 
 ```
 ### Q1.2 ICU stays
