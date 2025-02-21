@@ -330,7 +330,7 @@ First, we must acquire our dataset. Once again, we will borrow this from our pre
 Now, we will load in the dataset, filtering for our preselected patient.
 ```{r}
 items <- read_csv('~/mimic/icu/d_items.csv.gz')
-chartid <- 10001217
+chartid <- 10063848
 chartevents_viz <- arrow::open_dataset("chartevents_pq") %>% 
   select(subject_id, itemid, charttime, valuenum, stay_id) %>%  
   filter(subject_id == chartid, 
@@ -414,7 +414,49 @@ ggplot(chartevents_viz, aes(x = charttime, y = valuenum, color = abbreviation,
 
 
 ```
+Now try it with the requested patient id: 
 
+```{r fig.width=10, fig.height=6}
+ggplot(chartevents_viz, aes(x = charttime, y = valuenum, color = abbreviation,
+                            group = interaction(stay_id, abbreviation))) +
+  geom_line(linewidth = 1) +  
+  geom_point(size = 2) +  
+
+  # ✅ Move vital signs to the right while keeping ICU stays at the top
+  facet_grid(rows = vars(abbreviation), cols = vars(stay_id), scales = "free") +  
+
+  # ✅ Remove explicit scale_x_datetime to use default ggplot ticks
+  scale_color_manual(values = c(
+    "HR" = "#E74C3C",       
+    "NBPm" = "#9A8700",      
+    "NBPs" = "#009E73",      
+    "RR" = "#009ADE",        
+    "Temperature F" = "#E377C2"  
+  )) +  
+
+  labs(
+    title = paste0("Patient ", chartid, " ICU stays - Vitals"),
+    x = "Calendar Time",
+    y = "Vital Value"
+  ) +
+
+  theme_minimal() +
+  theme(
+    strip.text.x = element_text(face = "bold", size = 14, color = "white"),  # ✅ ICU stay labels remain on top
+    strip.text.y.right = element_text(face = "bold", size = 12, color = 'white'),  # ✅ Move vital signs to the right
+    strip.background = element_rect(fill = "gray50", color = "gray50"),  
+    strip.placement = "outside",
+    panel.grid.major = element_line(color = "gray80"), 
+    panel.grid.minor = element_blank(),
+
+    # ✅ Use default tick spacing on both axes
+    axis.text.x = element_text(angle = 0, hjust = 0.5, size = 10),  
+    
+    # ✅ Remove "Vital Sign" Legend
+    legend.position = "none"  
+  )
+
+```
 ## Q2. ICU stays
 
 `icustays.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/icu/icustays/>) contains data about Intensive Care Units (ICU) stays. The first 10 lines are
