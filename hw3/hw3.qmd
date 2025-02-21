@@ -462,10 +462,54 @@ zcat < ~/mimic/icu/icustays.csv.gz | head
 ### Q2.1 Ingestion
 
 Import `icustays.csv.gz` as a tibble `icustays_tble`. 
-
+**Solution**: We will first import the data, and then utilize `mutate` to specify our data types. Once again, we want to ensure that timezone is `UTC` and that all data types are properly stored. We can use the `str` command to verify this periodically,
+```{r}
+# Ensure correct data types
+icustays_tble <- read_csv('~/mimic/icu/icustays.csv.gz')
+icustays_tble <- icustays_tble %>%
+  mutate(
+    subject_id = as.integer(subject_id),
+    hadm_id = as.integer(hadm_id),
+    stay_id = as.integer(stay_id),
+    intime = with_tz(intime,
+                     'UTC'),  
+    outtime = with_tz(outtime,
+                      'UTC') 
+  )
+```
 ### Q2.2 Summary and visualization
 
 How many unique `subject_id`? Can a `subject_id` have multiple ICU stays? Summarize the number of ICU stays per `subject_id` by graphs. 
+**Solution**:
+First, we will see how many unique values of `subject_id` there are. We observe that there are 65,366 unique instances of subject id. To check if a particular value for `subject_id` can correspond to more than one icu stay, characterized by 'stay_id'. We will do this by creating a summary table 
+```{r}
+# Number of unique subject id
+print(n_distinct(icustays_tble$subject_id))
+# Get number of unique stay_id for each subject_id
+icustays_by_subjid <- icustays_tble %>%
+  group_by(subject_id) %>%
+  summarise(
+    num_stays = n_distinct(stay_id)) %>%
+  count(num_stays,
+        name = 'num_patients') %>%
+  arrange(num_stays)
+
+print(icustays_by_subjid)
+
+# Visualize number of icu stays per unique subject id
+ggplot(icustays_by_subjid,
+       aes(x = factor(num_stays),
+           y = num_patients)) +
+  geom_bar(stat = 'identity',
+           fill = 'steelblue',
+           color = 'black') +
+  labs(
+    title = 'Distribution of Total ICU Stays Per Unique Subject ID',
+    x = 'Total # of ICU Stays',
+    y = '# of Patients'
+  ) +
+  theme_minimal()
+```
 
 ## Q3. `admissions` data
 
