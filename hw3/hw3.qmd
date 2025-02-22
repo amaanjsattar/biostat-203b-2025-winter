@@ -906,7 +906,7 @@ mimic_icu_cohort <- icustays_tble %>%
   left_join(chartevents_tble, by = c("subject_id", "stay_id")) %>%
   # Filter for adults
   filter(anchor_age >= 18)
-
+head(mimic_icu_cohort)
 ```
 ## Q8. Exploratory data analysis (EDA)
 
@@ -919,4 +919,10 @@ Summarize the following information about the ICU stay cohort `mimic_icu_cohort`
 - Length of ICU stay `los` vs the first vital measurements within the ICU stay
 
 - Length of ICU stay `los` vs first ICU unit
+
+**Solution**:
+```{r}
+
+
+```
 
