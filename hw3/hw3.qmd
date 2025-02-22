@@ -11,6 +11,7 @@ format:
     toc-depth: 4
     toc-location: left
     code-fold: false
+  pdf: default
 ---
 
 Display machine information for reproducibility:
