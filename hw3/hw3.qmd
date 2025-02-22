@@ -793,6 +793,17 @@ open_dataset(
   collect() %>%
   arrange(subject_id, stay_id) %>%
   relocate(subject_id, stay_id, sort(names(.))) %>%
+  rename(
+    creatinine = `50912`,
+    potassium = `50971`,
+    sodium = `50983`,
+    chloride = `50902`,
+    bicarbonate = `50882`,
+    hematocrit = `51221`,
+    wbc_count = `51301`,
+    glucose = `50931`
+  ) %>%
+  
   print(width = Inf)
 ```
 ```
