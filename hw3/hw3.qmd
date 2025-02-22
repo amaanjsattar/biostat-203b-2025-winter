@@ -761,7 +761,7 @@ lab_items <- c(50912,
                51221,
                51301,
                50931)
-open_dataset(
+labevents_tble <- open_dataset(
   sources = 'labevents_pq',
   format = 'parquet'
 ) %>%
@@ -824,58 +824,41 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 ![](chartevents_tble.png)
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `chartevents_pq` folder available at the current working directory, for example, by a symbolic link.
+**Solution**:
 ```{r}
-# Define vital item IDs for HW3 Q6 (use 220180 for diastolic BP)
+# Define the relevant item IDs for vitals and our desired final labels.
 vitals_items <- c(220045, 220179, 220180, 223761, 220210)
-
-# Manually define the final column names (based on items$label)
 final_names <- c(
   "220045" = "Heart Rate",
-  "220179" = "SBP",      # Systolic BP
-  "220180" = "DBP",      # Diastolic BP (for HW3 Q6)
+  "220179" = "Noninvasive BP Systolic",
+  "220180" = "Noninvasive BP Diastolic",
   "223761" = "Temperature (F)",
   "220210" = "Respiratory Rate"
 )
 
 # Process chartevents:
-# 1. Load only relevant columns and filter for the desired itemids.
-# 2. Join with icustays_tble to get ICU info (subject_id, stay_id, intime).
-# 3. Keep only measurements with storetime >= intime.
-# 4. For each ICU stay and vital (itemid), select the earliest storetime (averaging if duplicates exist).
-# 5. Pivot wider so that each ICU stay is one row with columns for each vital.
 chartevents_tble <- open_dataset("chartevents_pq", format = "parquet") %>%
   to_duckdb() %>%
-  
   select(subject_id, stay_id, itemid, storetime, valuenum) %>%
   filter(itemid %in% vitals_items) %>%
-  
   inner_join(
     select(icustays_tble, subject_id, stay_id, intime),
     by = c("subject_id", "stay_id"),
     copy = TRUE
   ) %>%
-  
-  # Keep only measurements recorded at or after ICU admission
+  # Keep only measurements after ICU admission
   filter(storetime >= intime) %>%
-  
-  # For each ICU stay and vital, keep the earliest measurement (if there are ties, average the values)
+  # For each ICU stay and vital, select the first measurement (using storetime)
   group_by(subject_id, stay_id, itemid) %>%
   slice_min(storetime, n = 1, with_ties = TRUE) %>%
   summarise(avg_valuenum = mean(valuenum, na.rm = TRUE), .groups = "drop") %>%
-  
-  # Pivot so that each ICU stay is one row, columns for each vital item
-  pivot_wider(
-    names_from = itemid,
-    values_from = avg_valuenum,
-    names_prefix = "lab_"
-  ) %>%
-  
+  # Pivot so each ICU stay is one row, with a column per itemid.
+  pivot_wider(names_from = itemid, values_from = avg_valuenum, names_prefix = "lab_") %>%
   collect() %>%
   arrange(subject_id, stay_id) %>%
   relocate(subject_id, stay_id, sort(names(.)))
 
-# Rename the lab columns using the final_names mapping.
-# The pivoted columns are named like "lab_220045", etc.
+# Rename pivoted columns using the mapping in final_names.
 for(old in names(final_names)) {
   old_name <- paste0("lab_", old)
   new_name <- final_names[old]
@@ -884,13 +867,18 @@ for(old in names(final_names)) {
   }
 }
 
-# Optionally, filter out rows where all vital measurements are NA.
+# Round the numeric columns (all except subject_id and stay_id) to 2 decimal places.
+chartevents_tble <- chartevents_tble %>%
+  mutate(across(-c(subject_id, stay_id), ~ round(.x, 2)))
+
+# Optionally, remove rows that have all NA for the lab measurements.
 chartevents_tble <- chartevents_tble %>%
   filter(if_any(-c(subject_id, stay_id), ~ !is.na(.)))
 
-# Print the final table and number of rows
+# Display the final result and row count
 print(chartevents_tble, width = Inf)
 print(nrow(chartevents_tble))
+
 ```
 ## Q7. Putting things together
 
@@ -906,6 +894,20 @@ The final `mimic_icu_cohort` should have one row per ICU stay and columns for ea
 
 ![](mimic_icu_cohort.png)
 
+```{r}
+mimic_icu_cohort <- icustays_tble %>%
+  # Join admissions on subject_id and hadm_id (patients don’t have stay_id)
+  left_join(admissions_tble, by = c("subject_id", "hadm_id")) %>%
+  # Join patients on subject_id only
+  left_join(patients_tble, by = "subject_id") %>%
+  # Join lab events by subject_id and stay_id
+  left_join(labevents_tble, by = c("subject_id", "stay_id")) %>%
+  # Join vital events by subject_id and stay_id
+  left_join(chartevents_tble, by = c("subject_id", "stay_id")) %>%
+  # Filter for adults
+  filter(anchor_age >= 18)
+
+```
 ## Q8. Exploratory data analysis (EDA)
 
 Summarize the following information about the ICU stay cohort `mimic_icu_cohort` using appropriate numerics or graphs:
