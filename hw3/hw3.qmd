@@ -684,11 +684,53 @@ zcat < ~/mimic/hosp/patients.csv.gz | head
 ### Q4.1 Ingestion
 
 Import `patients.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/hosp/patients/>) as a tibble `patients_tble`.
+**Solution**: We will first import the data. Next, we will make sure that all data types are properly formatted. This was done in the console using `str`.
+```{r}
+patients_tble <- read_csv('~/mimic/hosp/patients.csv.gz')
+```
 
 ### Q4.2 Summary and visualization
 
 Summarize variables `gender` and `anchor_age` by graphics, and explain any patterns you see.
+**Solution**: We proceed to visualize the variables of interest. We will use a bar chart to visualize the distribution of `gender`, and a histogram to visualize the distribution of `anchor_age`. First, we plot the distribution of patient gender:
+```{r}
+ggplot(patients_tble,
+       aes(x = gender,
+           fill = gender)) +
+  geom_bar() +
+  scale_fill_manual(values = c('F' = '#E74C3C',
+                               'M' = '#3498DB')) + 
+    title = 'Distribution of Gender',
+    x = 'Gender',
+    y = 'Count'
+  ) +
+  theme_minimal() +
+  theme(legend.position = 'none')
 
+```
+Next, we plot the distribution of patient age as a histogram with an overlaid, scaled density curve: 
+```{r}
+ggplot(patients_tble,
+       aes(x = anchor_age)) +
+  geom_histogram(binwidth = 5,
+                 fill = '#9B59B6',
+                 color = 'black',
+                 alpha = 0.7) +
+  geom_density(aes(y = ..count.. * 5),
+               color = 'black',
+               linetype = 'dashed') +  # Density curve scaled to match histogram
+  scale_x_continuous(breaks = seq(0,
+                                  100,
+                                  by = 2)) +  # Tick marks every 10 years
+  labs(
+    title = 'Distribution of Anchor Age',
+    x = 'Anchor Age (Years)',
+    y = 'Number of Patients'
+  ) +
+  theme_minimal()
+
+```
+We see that there are slightly more female patients than male patients, and that the distribution of anchor age is unimodal around the late teen years. There is another small spike visible in the mid-50. It is worth noting that the ages, birth years, and anchor years are all separate quantities, and that anchor_age is merely the patient's age in the anchor_year. Hence, it is difficult to interpret the variable `anchor_age` without the added context of their `anchor_year_group`, and their `anchor_year`. Essentially, this variable corresponds to the age of the patient at the time of their shifted year, which varies among the patients.  
 ## Q5. Lab results
 
 `labevents.csv.gz` (<https://mimic.mit.edu/docs/iv/modules/hosp/labevents/>) contains all laboratory measurements for patients. The first 10 lines are
