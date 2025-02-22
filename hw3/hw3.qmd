@@ -826,57 +826,89 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `chartevents_pq` folder available at the current working directory, for example, by a symbolic link.
 **Solution**:
 ```{r}
-# Define the relevant item IDs for vitals and our desired final labels.
-vitals_items <- c(220045, 220179, 220180, 223761, 220210)
+# Define relevant item IDs for vitals and desired final labels.
+vitals_items <- c(220045,
+                  220179,
+                  220180,
+                  223761,
+                  220210)
 final_names <- c(
-  "220045" = "Heart Rate",
-  "220179" = "Noninvasive BP Systolic",
-  "220180" = "Noninvasive BP Diastolic",
-  "223761" = "Temperature (F)",
-  "220210" = "Respiratory Rate"
+  '220045' = 'Heart Rate',
+  '220179' = 'Noninvasive BP Systolic',
+  '220180' = 'Noninvasive BP Diastolic',
+  '223761' = 'Temperature (F)',
+  '220210' = 'Respiratory Rate'
 )
 
 # Process chartevents:
-chartevents_tble <- open_dataset("chartevents_pq", format = "parquet") %>%
+chartevents_tble <- open_dataset('chartevents_pq',
+                                 format = 'parquet') %>%
   to_duckdb() %>%
-  select(subject_id, stay_id, itemid, storetime, valuenum) %>%
+  select(subject_id,
+         stay_id,
+         itemid,
+         storetime,
+         valuenum) %>%
   filter(itemid %in% vitals_items) %>%
   inner_join(
-    select(icustays_tble, subject_id, stay_id, intime),
-    by = c("subject_id", "stay_id"),
+    select(icustays_tble,
+           subject_id,
+           stay_id,
+           intime),
+    by = c('subject_id',
+           'stay_id'),
     copy = TRUE
   ) %>%
   # Keep only measurements after ICU admission
   filter(storetime >= intime) %>%
-  # For each ICU stay and vital, select the first measurement (using storetime)
-  group_by(subject_id, stay_id, itemid) %>%
-  slice_min(storetime, n = 1, with_ties = TRUE) %>%
-  summarise(avg_valuenum = mean(valuenum, na.rm = TRUE), .groups = "drop") %>%
+  # For each ICU stay and vital, select first measurement (using storetime)
+  group_by(subject_id,
+           stay_id,
+           itemid) %>%
+  slice_min(storetime,
+            n = 1,
+            with_ties = TRUE) %>%
+  summarise(avg_valuenum = mean(valuenum,
+                                na.rm = TRUE),
+            .groups = 'drop') %>%
   # Pivot so each ICU stay is one row, with a column per itemid.
-  pivot_wider(names_from = itemid, values_from = avg_valuenum, names_prefix = "lab_") %>%
+  pivot_wider(names_from = itemid,
+              values_from = avg_valuenum,
+              names_prefix = 'lab_') %>%
   collect() %>%
-  arrange(subject_id, stay_id) %>%
-  relocate(subject_id, stay_id, sort(names(.)))
+  arrange(subject_id,
+          stay_id) %>%
+  relocate(subject_id,
+           stay_id,
+           sort(names(.)))
 
-# Rename pivoted columns using the mapping in final_names.
+# Rename pivoted columns using mapping in final_names.
 for(old in names(final_names)) {
-  old_name <- paste0("lab_", old)
+  old_name <- paste0('lab_',
+                     old)
   new_name <- final_names[old]
   if(old_name %in% colnames(chartevents_tble)) {
-    colnames(chartevents_tble)[colnames(chartevents_tble) == old_name] <- new_name
+    colnames(
+      chartevents_tble)[colnames(chartevents_tble) == old_name] <- new_name
   }
 }
 
-# Round the numeric columns (all except subject_id and stay_id) to 2 decimal places.
+# Round numeric columns (all except subject_id and stay_id) to 2 decimal places.
 chartevents_tble <- chartevents_tble %>%
-  mutate(across(-c(subject_id, stay_id), ~ round(.x, 2)))
+  mutate(across(-c(subject_id,
+                   stay_id),
+                ~ round(.x,
+                        2)))
 
-# Optionally, remove rows that have all NA for the lab measurements.
+# Remove rows that have all NA for lab measurements.
 chartevents_tble <- chartevents_tble %>%
-  filter(if_any(-c(subject_id, stay_id), ~ !is.na(.)))
+  filter(if_any(-c(subject_id,
+                   stay_id),
+                ~ !is.na(.)))
 
-# Display the final result and row count
-print(chartevents_tble, width = Inf)
+# Display final result and row count
+print(chartevents_tble,
+      width = Inf)
 print(nrow(chartevents_tble))
 
 ```
@@ -897,13 +929,20 @@ The final `mimic_icu_cohort` should have one row per ICU stay and columns for ea
 ```{r}
 mimic_icu_cohort <- icustays_tble %>%
   # Join admissions on subject_id and hadm_id (patients don’t have stay_id)
-  left_join(admissions_tble, by = c("subject_id", "hadm_id")) %>%
+  left_join(admissions_tble,
+            by = c('subject_id',
+                   'hadm_id')) %>%
   # Join patients on subject_id only
-  left_join(patients_tble, by = "subject_id") %>%
+  left_join(patients_tble,
+            by = 'subject_id') %>%
   # Join lab events by subject_id and stay_id
-  left_join(labevents_tble, by = c("subject_id", "stay_id")) %>%
+  left_join(labevents_tble,
+            by = c('subject_id',
+                   'stay_id')) %>%
   # Join vital events by subject_id and stay_id
-  left_join(chartevents_tble, by = c("subject_id", "stay_id")) %>%
+  left_join(chartevents_tble,
+            by = c('subject_id',
+                   'stay_id')) %>%
   # Filter for adults
   filter(anchor_age >= 18)
 head(mimic_icu_cohort)
