@@ -959,9 +959,267 @@ Summarize the following information about the ICU stay cohort `mimic_icu_cohort`
 
 - Length of ICU stay `los` vs first ICU unit
 
-**Solution**:
+**Solution**: First, we will visualize length of stay against demographic variables. We will begin with `race`. We observe that there are 33 different race categories with considerable overlap, so we will bin them together for intuitive visualization. 
 ```{r}
+# los and race
+mimic_icu_cohort <- mimic_icu_cohort %>%
+  mutate(race_bin = case_when(
+    race %in% c('WHITE',
+                'WHITE - RUSSIAN',
+                'WHITE - OTHER EUROPEAN',
+                'WHITE - BRAZILIAN',
+                'WHITE - EASTERN EUROPEAN') ~ 'White',
+    race %in% c('BLACK/AFRICAN AMERICAN',
+                'BLACK/CAPE VERDEAN',
+                'BLACK/AFRICAN',
+                'BLACK/CARIBBEAN ISLAND') ~ 'Black',
+    race %in% c('HISPANIC/LATINO - SALVADORAN',
+                'HISPANIC/LATINO - PUERTO RICAN',
+                'HISPANIC/LATINO - GUATEMALAN',
+                'HISPANIC/LATINO - DOMINICAN',
+                'HISPANIC OR LATINO',
+                'HISPANIC/LATINO - CUBAN',
+                'HISPANIC/LATINO - CENTRAL AMERICAN',
+                'HISPANIC/LATINO - HONDURAN',
+                'HISPANIC/LATINO - COLUMBIAN',
+                'HISPANIC/LATINO - MEXICAN') ~ 'Hispanic/Latino',
+    race %in% c('ASIAN',
+                'ASIAN - SOUTH EAST ASIAN',
+                'ASIAN - CHINESE',
+                'ASIAN - KOREAN',
+                'ASIAN - ASIAN INDIAN') ~ 'Asian',
+    race %in% c('AMERICAN INDIAN/ALASKA NATIVE') ~ 'Native American',
+    race %in% c(
+      'NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER') ~ 'Pacific Islander',
+    TRUE ~ 'Other/Unknown'
+  ))
+
+ggplot(mimic_icu_cohort, aes(x = race_bin, y = los)) +
+  geom_boxplot(fill = 'steelblue', color = 'black') +
+  labs(title = 'ICU Length of Stay by Race (Binned)',
+       x = 'Race',
+       y = 'Length of Stay (Days)') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45,
+                                   hjust = 1))
+
+
+```
+Next, we will plot the distribution of length of stay by insurance. 
+```{r}
+ggplot(mimic_icu_cohort %>% filter(!is.na(los)),
+       aes(x = insurance,
+           y = los)) +
+  geom_boxplot(fill = 'steelblue',
+               color = 'black',
+               outlier.shape = NA) +
+  labs(
+    title = 'ICU Length of Stay by Insurance',
+    x = 'Insurance',
+    y = 'Length of Stay (Days)'
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45,
+                               hjust = 1)
+  ) +
+  coord_cartesian(ylim = c(0,
+                           10))  
+
 
 
 ```
 
+Next, we will plot length of stay by marital status:
+```{r}
+ggplot(mimic_icu_cohort %>% filter(!is.na(los),
+                                   !is.na(marital_status)), 
+       aes(x = marital_status,
+           y = los)) +
+  geom_boxplot(fill = 'steelblue',
+               color = 'black',
+               outlier.shape = NA) +  
+  labs(
+    title = 'ICU Length of Stay by Marital Status',
+    x = 'Marital Status',
+    y = 'Length of Stay (Days)'
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45,
+                               hjust = 1)
+  ) +
+  coord_cartesian(ylim = c(0, 10))  
+
+```
+Next, we will plot length of stay by age at intime. We will utilize a scatter plot with an overlaid trend line to observe any monotonic patterns in the data.
+```{r}
+ggplot(mimic_icu_cohort,
+       aes(x = anchor_age,
+           y = los)) +
+  geom_point(alpha = 0.3,
+             color = 'blue') +  
+  geom_smooth(method = 'lm', color = 'red') +  # Linear trend line
+  labs(
+    title = 'ICU Length of Stay vs. Age at Intime',
+    x = 'Age at Intime',
+    y = 'Length of Stay (Days)'
+  ) +
+  theme_minimal()
+
+```
+Next, we will summarize length of stay by last available lab measurements before ICU Stay. We will use faceted scatter plots to summarize this information intuitively. As a secondary plot, I included faceted 2D histograms with color gradients denoting density. 
+```{r}
+# Select relevant lab measurements
+lab_vars <- c('bicarbonate',
+              'chloride',
+              'creatinine',
+              'glucose', 
+              'potassium',
+              'sodium',
+              'hematocrit',
+              'wbc_count')
+
+# Pivot longer to create one column for lab names and values
+mimic_icu_cohort_long <- mimic_icu_cohort %>%
+  select(los,
+         all_of(lab_vars)) %>%
+  pivot_longer(cols = -los,
+               names_to = 'Lab_Test',
+               values_to = 'Lab_Value')
+
+# Scatter plots with linear regression lines
+ggplot(mimic_icu_cohort_long,
+       aes(x = Lab_Value,
+           y = los)) +
+  geom_point(alpha = 0.3,
+             color = 'blue') +  
+  geom_smooth(method = 'lm',
+              color = 'red') +  # Trend line
+  facet_wrap(~ Lab_Test,
+             scales = 'free_x') +  # Facet by lab test
+  labs(
+    title = 'ICU Length of Stay vs. Last Available Lab Measurements',
+    x = 'Lab Measurement Value',
+    y = 'Length of Stay (Days)'
+  ) +
+  theme_minimal()
+
+
+# Pivot longer to reshape lab variables for faceted histograms
+mimic_icu_cohort_long <- mimic_icu_cohort %>%
+  select(los,
+         all_of(lab_vars)) %>%
+  pivot_longer(cols = -los,
+               names_to = 'Lab_Test',
+               values_to = 'Lab_Value')
+
+# Plot LOS (y-axis) vs Lab Value (x-axis) in faceted histograms
+ggplot(mimic_icu_cohort_long,
+       aes(x = Lab_Value,
+           y = los)) +
+  geom_bin2d(bins = 30) +  
+  scale_fill_viridis_c() +  
+  facet_wrap(~ Lab_Test,
+             scales = 'free_x') + 
+  labs(
+    title = 'LOS vs. Lab Measurements Before ICU Stay',
+    x = 'Lab Value',
+    y = 'Length of Stay (Days)',
+    fill = 'Density'
+  ) +
+  theme_minimal()
+
+```
+
+Next, we will plot length of stay against first ICU vital measurements. As we did above, we will include both faceted scatter plots and histograms to summarize this information visually:
+```{r}
+# Select LOS and the first ICU vital measurements
+vital_vars <- c('Heart Rate',
+                'Noninvasive BP Systolic',
+                'Noninvasive BP Diastolic', 
+                'Respiratory Rate',
+                'Temperature (F)')
+
+# Pivot longer to reshape vital variables for faceted scatter plots
+mimic_icu_cohort_long <- mimic_icu_cohort %>%
+  select(los,
+         all_of(vital_vars)) %>%
+  pivot_longer(cols = -los,
+               names_to = 'Vital_Sign',
+               values_to = 'Vital_Value')
+
+# Scatter plot of LOS vs. Vital Measurements
+ggplot(mimic_icu_cohort_long, aes(x = Vital_Value, y = los)) +
+  geom_point(alpha = 0.3, color = 'blue') +  # Transparent blue dots
+  geom_smooth(method = 'lm', color = 'red', se = TRUE) +  # Linear trend line with confidence interval
+  facet_wrap(~ Vital_Sign, scales = 'free_x') +  # Facet by vital sign
+  labs(
+    title = 'LOS vs. First Vital Measurements in ICU Stay',
+    x = 'Vital Measurement',
+    y = 'Length of Stay (Days)'
+  ) +
+  theme_minimal()
+
+
+# Plot LOS (y-axis) vs Vital Measurement (x-axis) in faceted histograms
+ggplot(mimic_icu_cohort_long,
+       aes(x = Vital_Value,
+           y = los)) +
+  geom_bin2d(bins = 30) +  
+  scale_fill_viridis_c() +  
+  facet_wrap(~ Vital_Sign,
+             scales = 'free_x') +  # Facet by vital sign
+  labs(
+    title = 'LOS vs. First Vital Measurements in ICU Stay',
+    x = 'Vital Measurement',
+    y = 'Length of Stay (Days)',
+    fill = 'Density'
+  ) +
+  theme_minimal()
+
+```
+
+Lastly, we will plot length of stay against first ICU unit. We will first plot a series of box plots to summarize the distributions. For more clarity, we will also construct scatter plots along the same x-axis:
+```{r}
+# Box plot of LOS vs First ICU Unit
+ggplot(mimic_icu_cohort, aes(x = first_careunit,
+                             y = los)) +
+  geom_boxplot(fill = 'skyblue',
+               color = 'black',
+               outlier.alpha = 0.3) +  
+  stat_summary(fun = median,
+               geom = 'point',
+               shape = 18,
+               size = 3,
+               color = 'red') +  
+  labs(
+    title = 'LOS vs. First ICU Unit',
+    x = 'First ICU Unit',
+    y = 'Length of Stay (Days)'
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 30,
+                               hjust = 1),  
+    panel.grid.major.x = element_blank()  
+  )
+
+
+ggplot(mimic_icu_cohort, aes(y = first_careunit,
+                             x = los)) +
+  geom_jitter(alpha = 0.6,
+              color = 'steelblue',
+              height = 0.2,
+              width = 0,
+              size = 2) +  
+  labs(title = 'LOS vs. First ICU Unit',
+       x = 'Length of Stay (Days)',
+       y = 'First ICU Unit') +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 12),
+        panel.grid.major = element_line(color = "gray80"))
+
+
+
+```
