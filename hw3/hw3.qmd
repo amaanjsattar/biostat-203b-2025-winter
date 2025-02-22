@@ -700,6 +700,7 @@ ggplot(patients_tble,
   geom_bar() +
   scale_fill_manual(values = c('F' = '#E74C3C',
                                'M' = '#3498DB')) + 
+  labs(
     title = 'Distribution of Gender',
     x = 'Gender',
     y = 'Count'
@@ -749,6 +750,52 @@ We are interested in the lab measurements of creatinine (50912), potassium (5097
 
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `labevents_pq` folder available at the current working directory `hw3`, for example, by a symbolic link.
+
+**Solution**: We first load in our dataset using the`parquet` format we generated in Homework 2. We have made it available in our working directory `hw3` via a symbolic link we created at the time of completing Q1. We filter for our metrics of interest, arrange the dataset, and aggregate the values. We also need to filter for `subject_id`'s that are present in  `icustays_tble`.
+```{r}
+lab_items <- c(50912,
+               50971,
+               50983,
+               50902,
+               50882,
+               51221,
+               51301,
+               50931)
+open_dataset(
+  sources = 'labevents_pq',
+  format = 'parquet'
+) %>%
+  to_duckdb() %>%
+  select(subject_id,
+         itemid,
+         storetime,
+         valuenum) %>%
+  filter(itemid %in% lab_items) %>%
+  left_join(
+    select(icustays_tble,
+           subject_id,
+           stay_id,
+           intime),
+    by = c('subject_id'),
+    copy = TRUE
+) %>%
+  filter(storetime < intime) %>%
+  group_by(subject_id,
+           stay_id,
+           itemid) %>%
+  slice_max(storetime,
+            n = 1) %>%
+  select(-storetime,
+         -intime) %>%
+  ungroup() %>%
+  pivot_wider(names_from = itemid,
+              values_from = valuenum) %>%
+  collect() %>%
+  arrange(subject_id, stay_id) %>%
+  relocate(subject_id, stay_id, sort(names(.))) %>%
+  print(width = Inf)
+```
+```
 
 ## Q6. Vitals from charted events
 
