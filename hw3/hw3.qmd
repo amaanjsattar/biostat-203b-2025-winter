@@ -806,7 +806,6 @@ open_dataset(
   
   print(width = Inf)
 ```
-```
 
 ## Q6. Vitals from charted events
 
@@ -825,7 +824,74 @@ We are interested in the vitals for ICU patients: heart rate (220045), systolic 
 ![](chartevents_tble.png)
 
 Hint: Use the Parquet format you generated in Homework 2. For reproducibility, make `chartevents_pq` folder available at the current working directory, for example, by a symbolic link.
+```{r}
+# Define vital item IDs for HW3 Q6 (use 220180 for diastolic BP)
+vitals_items <- c(220045, 220179, 220180, 223761, 220210)
 
+# Manually define the final column names (based on items$label)
+final_names <- c(
+  "220045" = "Heart Rate",
+  "220179" = "SBP",      # Systolic BP
+  "220180" = "DBP",      # Diastolic BP (for HW3 Q6)
+  "223761" = "Temperature (F)",
+  "220210" = "Respiratory Rate"
+)
+
+# Process chartevents:
+# 1. Load only relevant columns and filter for the desired itemids.
+# 2. Join with icustays_tble to get ICU info (subject_id, stay_id, intime).
+# 3. Keep only measurements with storetime >= intime.
+# 4. For each ICU stay and vital (itemid), select the earliest storetime (averaging if duplicates exist).
+# 5. Pivot wider so that each ICU stay is one row with columns for each vital.
+chartevents_tble <- open_dataset("chartevents_pq", format = "parquet") %>%
+  to_duckdb() %>%
+  
+  select(subject_id, stay_id, itemid, storetime, valuenum) %>%
+  filter(itemid %in% vitals_items) %>%
+  
+  inner_join(
+    select(icustays_tble, subject_id, stay_id, intime),
+    by = c("subject_id", "stay_id"),
+    copy = TRUE
+  ) %>%
+  
+  # Keep only measurements recorded at or after ICU admission
+  filter(storetime >= intime) %>%
+  
+  # For each ICU stay and vital, keep the earliest measurement (if there are ties, average the values)
+  group_by(subject_id, stay_id, itemid) %>%
+  slice_min(storetime, n = 1, with_ties = TRUE) %>%
+  summarise(avg_valuenum = mean(valuenum, na.rm = TRUE), .groups = "drop") %>%
+  
+  # Pivot so that each ICU stay is one row, columns for each vital item
+  pivot_wider(
+    names_from = itemid,
+    values_from = avg_valuenum,
+    names_prefix = "lab_"
+  ) %>%
+  
+  collect() %>%
+  arrange(subject_id, stay_id) %>%
+  relocate(subject_id, stay_id, sort(names(.)))
+
+# Rename the lab columns using the final_names mapping.
+# The pivoted columns are named like "lab_220045", etc.
+for(old in names(final_names)) {
+  old_name <- paste0("lab_", old)
+  new_name <- final_names[old]
+  if(old_name %in% colnames(chartevents_tble)) {
+    colnames(chartevents_tble)[colnames(chartevents_tble) == old_name] <- new_name
+  }
+}
+
+# Optionally, filter out rows where all vital measurements are NA.
+chartevents_tble <- chartevents_tble %>%
+  filter(if_any(-c(subject_id, stay_id), ~ !is.na(.)))
+
+# Print the final table and number of rows
+print(chartevents_tble, width = Inf)
+print(nrow(chartevents_tble))
+```
 ## Q7. Putting things together
 
 Let us create a tibble `mimic_icu_cohort` for all ICU stays, where rows are all ICU stays of adults (age at `intime` >= 18) and columns contain at least following variables
