@@ -67,8 +67,11 @@ dbListTables(con_bq)
 Connect to the `icustays` table.
 ```{r}
 # full ICU stays table
-icustays_tble <- tbl(con_bq, "icustays") |>
-  arrange(subject_id, hadm_id, stay_id) |>
+icustays_tble <- tbl(con_bq,
+                     "icustays") |>
+  arrange(subject_id,
+          hadm_id,
+          stay_id) |>
   # show_query() |>
   print(width = Inf)
 ```
@@ -77,8 +80,10 @@ icustays_tble <- tbl(con_bq, "icustays") |>
 
 Connect to the `admissions` table.
 ```{r}
-admissions_tble <- tbl(con_bq, "admissions") |>
-  arrange(subject_id, hadm_id) |>
+admissions_tble <- tbl(con_bq,
+                       "admissions") |>
+  arrange(subject_id,
+          hadm_id) |>
   # show_query() |>
   print(width = Inf)
 ```
@@ -87,7 +92,8 @@ admissions_tble <- tbl(con_bq, "admissions") |>
 
 Connect to the `patients` table.
 ```{r}
-patients_tble <- tbl(con_bq, "patients") |>
+patients_tble <- tbl(con_bq,
+                     "patients") |>
   arrange(subject_id) |>
   # show_query() |>
   print(width = Inf)
