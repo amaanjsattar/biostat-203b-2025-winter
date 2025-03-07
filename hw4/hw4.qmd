@@ -97,8 +97,44 @@ patients_tble <- tbl(con_bq, "patients") |>
 
 Connect to the `labevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the lab items listed in HW3. Only keep the last lab measurements (by `storetime`) before the ICU stay and pivot lab items to become variables/columns. Write all steps in _one_ chain of pipes.
 ```{r}
-# # TODO
-# labevents_tble <- 
+labevents_subset <- tbl(con_bq,
+                        "labevents") |>
+  filter(itemid %in% c(50912,
+                       50971,
+                       50983,
+                       50902,
+                       50882,
+                       51221,
+                       51301,
+                       50931)) |>
+  inner_join(tbl(con_bq,
+                 "icustays"),
+             by = "subject_id") |>
+  filter(storetime <= intime) |>
+  group_by(subject_id,
+           itemid) |>
+  slice_max(order_by = storetime,
+            n = 1) |>
+  ungroup() |>
+  select(subject_id,
+         itemid,
+         valuenum) |>
+  pivot_wider(names_from = itemid,
+              values_from = valuenum) |>
+  rename(
+    creatinine = `50912`,
+    potassium = `50971`,
+    sodium = `50983`,
+    chloride = `50902`,
+    bicarbonate = `50882`,
+    hematocrit = `51221`,
+    white_blood_cell_count = `51301`,
+    glucose = `50931`
+  ) |>
+  arrange(subject_id) |>
+  # show_query() |>
+  print(width = Inf)
+
 ```
 
 ### Q1.6 `chartevents` data
