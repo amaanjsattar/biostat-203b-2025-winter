@@ -228,16 +228,73 @@ mimic_icu_cohort <-
 Perform the following preprocessing steps. (i) Lump infrequent levels into "Other" level for `first_careunit`, `last_careunit`, `admission_type`, `admission_location`, and `discharge_location`. (ii) Collapse the levels of `race` into `ASIAN`, `BLACK`, `HISPANIC`, `WHITE`, and `Other`. (iii) Create a new variable `los_long` that is `TRUE` when `los` is greater than or equal to 2 days. (iv) Summarize the data using `tbl_summary()`, stratified by `los_long`. Hint: `fct_lump_n` and `fct_collapse` from the `forcats` package are useful.
 
 **Solution**: 
-First, we will examine the levels of `first_careunit`, `last_careunit`, `admission_type`, `admission_location`, and `discharge_location` to determine the threshold for lumping infrequent levels into "Other". 
+We proceed to preprocess the data. We examine Dr. Zhou's numerical summary of his preprocessing tibble, as well as frequency tables for our categorical variables. We decide to lump infrequent levels into "Other" such that we end up with a maximum of 5 levels for each categorical variable.  
 ```{r}
-# Frequency table for first_careunit, in descending order (with percentages)
-mimic_icu_cohort %>%
-  group_by(first_careunit) %>%
-  summarise(n = n()) %>%
-  mutate(percentage = n / sum(n) * 100) %>%
-  arrange(desc(percentage)) %>%
-  print(n = Inf)
+mimic_icu_cohort_preprocessed <- mimic_icu_cohort %>%
+  mutate(
+    first_careunit = fct_lump_n(first_careunit, n = 4, other_level = "Other"),
+    last_careunit = fct_lump_n(last_careunit, n = 4, other_level = "Other"),
+    admission_type = fct_lump_n(admission_type, n = 4, other_level = "Other"),
+    admission_location = fct_lump_n(admission_location, n = 3, other_level = "Other"),
+    discharge_location = fct_lump_n(discharge_location, n = 4, other_level = "Other")
+  ) %>%
+  # Ensure race is a factor so we can work with its levels
+  mutate(race = factor(race)) %>%
+  { 
+    # Capture the current levels of race
+    race_levels <- levels(.$race)
+    mutate(., race = fct_collapse(race,
+      ASIAN    = race_levels[grep("ASIAN", race_levels)],
+      BLACK    = race_levels[grep("BLACK", race_levels)],
+      HISPANIC = race_levels[grep("HISPANIC", race_levels)],
+      WHITE    = race_levels[grep("WHITE", race_levels)],
+      OTHER    = setdiff(race_levels,
+                         c(race_levels[grep("ASIAN", race_levels)],
+                           race_levels[grep("BLACK", race_levels)],
+                           race_levels[grep("HISPANIC", race_levels)],
+                           race_levels[grep("WHITE", race_levels)]))
+    ))
+  }
+mimic_icu_cohort_preprocessed <- mimic_icu_cohort_preprocessed %>%
+  mutate(los_long = los >= 2)
+
+mimic_icu_cohort_preprocessed <- mimic_icu_cohort_preprocessed %>%
+  select(
+    first_careunit,
+    last_careunit,
+    los_long,
+    admission_type,
+    admission_location,
+    discharge_location,
+    insurance,
+    language,
+    marital_status,
+    race,
+    hospital_expire_flag,
+    gender,
+    dod,
+    chloride,
+    creatinine,
+    sodium,
+    potassium,
+    glucose,
+    hematocrit,
+    wbc_count,
+    bicarbonate,
+    `Noninvasive BP Systolic`,
+    `Noninvasive BP Diastolic`,
+    `Respiratory Rate`,
+    `Temperature_F`,
+    `Heart Rate`,
+    age_intime
+  ) %>%
+  tbl_summary(by = los_long)
+
+mimic_icu_cohort_preprocessed
+
+
 ```
+
 
 
 Hint: Below is a numerical summary of my tibble after preprocessing:
