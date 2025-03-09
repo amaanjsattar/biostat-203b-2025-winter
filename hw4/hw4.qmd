@@ -31,6 +31,7 @@ library(DBI)
 library(gt)
 library(gtsummary)
 library(tidyverse)
+library(forcats)
 ```
 
 ## Q1. Compile the ICU cohort in HW3 from the Google BigQuery database 
@@ -103,28 +104,38 @@ patients_tble <- tbl(con_bq,
 
 Connect to the `labevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the lab items listed in HW3. Only keep the last lab measurements (by `storetime`) before the ICU stay and pivot lab items to become variables/columns. Write all steps in _one_ chain of pipes.
 ```{r}
+lab_items <- c(50912,
+               50971,
+               50983,
+               50902,
+               50882,
+               51221,
+               51301,
+               50931)
 labevents_tble <- tbl(con_bq,
-                        "labevents") |>
-  filter(itemid %in% c(50912,
-                       50971,
-                       50983,
-                       50902,
-                       50882,
-                       51221,
-                       51301,
-                       50931)) |>
-  inner_join(tbl(con_bq,
-                 "icustays"),
-             by = "subject_id") |>
-  filter(storetime <= intime) |>
-  group_by(subject_id,
-           itemid) |>
-  slice_max(order_by = storetime,
-            n = 1) |>
-  ungroup() |>
+                      "labevents") |>
   select(subject_id,
          itemid,
+         storetime,
          valuenum) |>
+  filter(itemid %in% lab_items) |>
+  left_join(
+    select(icustays_tble,
+           subject_id,
+           stay_id,
+           intime),
+    by = c("subject_id"),
+    copy = TRUE
+  ) |>
+  filter(storetime < intime) |>
+  group_by(subject_id,
+           stay_id,
+           itemid) |>
+  slice_max(storetime,
+            n = 1) |>
+  select(-storetime,
+         -intime) |>
+  ungroup() |>
   pivot_wider(names_from = itemid,
               values_from = valuenum) |>
   rename(
@@ -134,47 +145,38 @@ labevents_tble <- tbl(con_bq,
     chloride = `50902`,
     bicarbonate = `50882`,
     hematocrit = `51221`,
-    white_blood_cell_count = `51301`,
+    wbc_count = `51301`,
     glucose = `50931`
   ) |>
-  arrange(subject_id) |>
-  # show_query() |>
+  arrange(subject_id, stay_id) |>
   print(width = Inf)
 
+
+
 ```
+We can verify the number of rows in our table using the tally function: 
+```{r}
+labevents_tble %>% tally()
+```
+
 
 ### Q1.6 `chartevents` data
 
 Connect to `chartevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the chart events listed in HW3. Only keep the first chart events (by `storetime`) during ICU stay and pivot chart events to become variables/columns. Write all steps in _one_ chain of pipes. Similary to HW3, if a vital has multiple measurements at the first `storetime`, average them.
 ```{r}
-# # TODO
 chartevents_tble <- 
-  tbl(con_bq,
-      "chartevents") |>
-  filter(itemid %in% c(220045,
-                       220179,
-                       220180,
-                       223761,
-                       220210)) |>
-  inner_join(tbl(con_bq,
-                 "icustays"),
-             by = "subject_id") |>
-  filter(storetime >= intime & storetime <= outtime) |>
-  group_by(subject_id,
-           itemid) |>
-  slice_min(order_by = storetime,
-            n = 1) |>
+  tbl(con_bq, "chartevents") |>
+  filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) |>
+  inner_join(tbl(con_bq, "icustays"), by = c("subject_id", "hadm_id", "stay_id")) |>
+  filter(storetime >= intime, storetime < outtime) |>
+  group_by(subject_id, stay_id, itemid) |>
+  slice_min(order_by = storetime, n = 1) |>
   ungroup() |>
-  select(subject_id,
-         itemid,
-         valuenum) |>
-  group_by(subject_id,
-           itemid) |>
-  summarise(valuenum = mean(valuenum,
-                            na.rm = TRUE)) |>
+  select(subject_id, stay_id, hadm_id, itemid, valuenum) |>
+  group_by(subject_id, stay_id, hadm_id, itemid) |>
+  summarise(valuenum = mean(valuenum, na.rm = TRUE)) |>
   ungroup() |>
-  pivot_wider(names_from = itemid,
-              values_from = valuenum) |>
+  pivot_wider(names_from = itemid, values_from = valuenum) |>
   rename(
     `Heart Rate` = `220045`,
     `Noninvasive BP Systolic` = `220179`,
@@ -183,10 +185,13 @@ chartevents_tble <-
     `Respiratory Rate` = `220210`
   ) |>
   arrange(subject_id) |>
-  # show_query() |>
   print(width = Inf)
 ```
 
+We can verify the number of rows in our table using the tally function: 
+```{r}
+chartevents_tble %>% tally()
+```
 ### Q1.7 Put things together
 
 This step is similar to Q7 of HW3. Using _one_ chain of pipes `|>` to perform following data wrangling steps: (i) start with the `icustays_tble`, (ii) merge in admissions and patients tables, (iii) keep adults only (age at ICU intime >= 18), (iv) merge in the labevents and chartevents tables, (v) `collect` the tibble, (vi) sort `subject_id`, `hadm_id`, `stay_id` and `print(width = Inf)`.
@@ -195,13 +200,24 @@ This step is similar to Q7 of HW3. Using _one_ chain of pipes `|>` to perform fo
 # # TODO
 mimic_icu_cohort <- 
   icustays_tble %>%
-  left_join(admissions_tble, by = c("subject_id", "hadm_id")) %>%
-  left_join(patients_tble, by = "subject_id") %>%
-  filter(anchor_age >= 18) %>%
-  left_join(labevents_tble, by = "subject_id") %>%
-  left_join(chartevents_tble, by = "subject_id") %>%
+  left_join(admissions_tble,
+            by = c("subject_id",
+                   "hadm_id")) %>%
+  left_join(patients_tble,
+            by = "subject_id") %>%
+  left_join(labevents_tble,
+            by = c("subject_id",
+                   "stay_id")) %>%
+  left_join(chartevents_tble,
+            by = c("subject_id",
+                   "hadm_id",
+                   "stay_id")) %>%
+  mutate(age_intime = year(intime) - anchor_year + anchor_age) %>%
+  filter(age_intime >= 18) %>%
+  arrange(subject_id,
+          hadm_id,
+          stay_id) %>%
   collect() %>%
-  arrange(subject_id, hadm_id, stay_id) %>%
   print(width = Inf)
 
 
@@ -210,6 +226,19 @@ mimic_icu_cohort <-
 ### Q1.8 Preprocessing
 
 Perform the following preprocessing steps. (i) Lump infrequent levels into "Other" level for `first_careunit`, `last_careunit`, `admission_type`, `admission_location`, and `discharge_location`. (ii) Collapse the levels of `race` into `ASIAN`, `BLACK`, `HISPANIC`, `WHITE`, and `Other`. (iii) Create a new variable `los_long` that is `TRUE` when `los` is greater than or equal to 2 days. (iv) Summarize the data using `tbl_summary()`, stratified by `los_long`. Hint: `fct_lump_n` and `fct_collapse` from the `forcats` package are useful.
+
+**Solution**: 
+First, we will examine the levels of `first_careunit`, `last_careunit`, `admission_type`, `admission_location`, and `discharge_location` to determine the threshold for lumping infrequent levels into "Other". 
+```{r}
+# Frequency table for first_careunit, in descending order (with percentages)
+mimic_icu_cohort %>%
+  group_by(first_careunit) %>%
+  summarise(n = n()) %>%
+  mutate(percentage = n / sum(n) * 100) %>%
+  arrange(desc(percentage)) %>%
+  print(n = Inf)
+```
+
 
 Hint: Below is a numerical summary of my tibble after preprocessing:
 
