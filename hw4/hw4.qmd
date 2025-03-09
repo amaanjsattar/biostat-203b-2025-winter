@@ -103,7 +103,7 @@ patients_tble <- tbl(con_bq,
 
 Connect to the `labevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the lab items listed in HW3. Only keep the last lab measurements (by `storetime`) before the ICU stay and pivot lab items to become variables/columns. Write all steps in _one_ chain of pipes.
 ```{r}
-labevents_subset <- tbl(con_bq,
+labevents_tble <- tbl(con_bq,
                         "labevents") |>
   filter(itemid %in% c(50912,
                        50971,
@@ -148,7 +148,43 @@ labevents_subset <- tbl(con_bq,
 Connect to `chartevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the chart events listed in HW3. Only keep the first chart events (by `storetime`) during ICU stay and pivot chart events to become variables/columns. Write all steps in _one_ chain of pipes. Similary to HW3, if a vital has multiple measurements at the first `storetime`, average them.
 ```{r}
 # # TODO
-# chartevents_tble <- 
+chartevents_tble <- 
+  tbl(con_bq,
+      "chartevents") |>
+  filter(itemid %in% c(220045,
+                       220179,
+                       220180,
+                       223761,
+                       220210)) |>
+  inner_join(tbl(con_bq,
+                 "icustays"),
+             by = "subject_id") |>
+  filter(storetime >= intime & storetime <= outtime) |>
+  group_by(subject_id,
+           itemid) |>
+  slice_min(order_by = storetime,
+            n = 1) |>
+  ungroup() |>
+  select(subject_id,
+         itemid,
+         valuenum) |>
+  group_by(subject_id,
+           itemid) |>
+  summarise(valuenum = mean(valuenum,
+                            na.rm = TRUE)) |>
+  ungroup() |>
+  pivot_wider(names_from = itemid,
+              values_from = valuenum) |>
+  rename(
+    `Heart Rate` = `220045`,
+    `Noninvasive BP Systolic` = `220179`,
+    `Noninvasive BP Diastolic` = `220180`,
+    `Temperature_F` = `223761`, 
+    `Respiratory Rate` = `220210`
+  ) |>
+  arrange(subject_id) |>
+  # show_query() |>
+  print(width = Inf)
 ```
 
 ### Q1.7 Put things together
@@ -157,7 +193,18 @@ This step is similar to Q7 of HW3. Using _one_ chain of pipes `|>` to perform fo
 
 ```{r}
 # # TODO
-# mimic_icu_cohort <- 
+mimic_icu_cohort <- 
+  icustays_tble %>%
+  left_join(admissions_tble, by = c("subject_id", "hadm_id")) %>%
+  left_join(patients_tble, by = "subject_id") %>%
+  filter(anchor_age >= 18) %>%
+  left_join(labevents_tble, by = "subject_id") %>%
+  left_join(chartevents_tble, by = "subject_id") %>%
+  collect() %>%
+  arrange(subject_id, hadm_id, stay_id) %>%
+  print(width = Inf)
+
+
 ```
 
 ### Q1.8 Preprocessing
