@@ -31,23 +31,14 @@ con_bq <- dbConnect(
 # -----------------------------
 icu_cohort <- readRDS(here("hw4", "mimiciv_shiny", "mimic_icu_cohort.rds"))
 
-# Define Variable Choices for Tab 1
-demo_vars_cat <- c("race", "language", "insurance", "marital_status", "gender")
-demo_vars_num <- c("age_intime")
-lab_vars <- c("bicarbonate", "chloride", "creatinine", "glucose", 
-              "potassium", "sodium", "hematocrit", "wbc_count")
-vital_vars <- c("Heart Rate", "Noninvasive BP Systolic", 
-                "Noninvasive BP Diastolic", "Temperature_F", "Respiratory Rate")
-var_choices <- c(demo_vars_cat, demo_vars_num, lab_vars, vital_vars)
-
 # UI for Tab 1
 tab1_ui <- fluidPage(
   titlePanel('Numerical and Graphical Summaries'),
   sidebarLayout(
     sidebarPanel(
       selectInput("var", "Choose a Variable",
-                  choices = var_choices,
-                  selected = demo_vars_num[1])
+                  choices = names(icu_cohort),
+                  selected = "age_intime")
     ),
     mainPanel(
       h3("Numerical Summary"),
@@ -62,41 +53,50 @@ tab1_ui <- fluidPage(
 tab1_server <- function(input, output) {
   output$num_summary <- renderTable({
     var <- input$var
-    if(var %in% demo_vars_num || var %in% lab_vars || var %in% vital_vars) {
+    if (is.numeric(icu_cohort[[var]])) {
       icu_cohort %>%
         summarise(
-          Min    = min(!!sym(var), na.rm = TRUE),
-          Q1     = quantile(!!sym(var), 0.25, na.rm = TRUE),
-          Median = median(!!sym(var), na.rm = TRUE),
-          Mean   = mean(!!sym(var), na.rm = TRUE),
-          Q3     = quantile(!!sym(var), 0.75, na.rm = TRUE),
-          Max    = max(!!sym(var), na.rm = TRUE)
+          Min    = min(.data[[var]], na.rm = TRUE),
+          Q1     = quantile(.data[[var]], 0.25, na.rm = TRUE),
+          Median = median(.data[[var]], na.rm = TRUE),
+          Mean   = mean(.data[[var]], na.rm = TRUE),
+          Q3     = quantile(.data[[var]], 0.75, na.rm = TRUE),
+          Max    = max(.data[[var]], na.rm = TRUE)
         )
-    } else if(var %in% demo_vars_cat) {
+    } else {
       icu_cohort %>%
-        group_by(!!sym(var)) %>%
-        summarise(Count = n()) %>%
-        mutate(Percentage = Count / sum(Count) * 100)
+        count(.data[[var]]) %>%
+        mutate(Percentage = n / sum(n) * 100)
     }
   })
   
   output$graph_summary <- renderPlot({
     var <- input$var
-    if(var %in% demo_vars_num || var %in% lab_vars || var %in% vital_vars) {
-      ggplot(icu_cohort, aes_string(x = var)) +
-        geom_histogram(fill='midnightblue', color = 'black') +
-        labs(title = paste("Histogram of", var),
-             x = var, y = "Frequency") +
+    if (is.numeric(icu_cohort[[var]])) {
+      ggplot(icu_cohort, aes(x = .data[[var]])) +
+        geom_histogram(fill = 'midnightblue', color = 'black') +
+        labs(title = paste("Histogram of", var), x = var, y = "Frequency") +
         theme_minimal()
-    } else if(var %in% demo_vars_cat) {
-      ggplot(icu_cohort, aes_string(x = var)) +
+    } else {
+      ggplot(icu_cohort, aes(x = .data[[var]])) +
         geom_bar(fill = "midnightblue", color = "black", alpha = 0.7) +
-        labs(title = paste("Bar Plot of", var),
-             x = var, y = "Count") +
+        labs(title = paste("Bar Plot of", var), x = var, y = "Count") +
         theme_minimal()
     }
   })
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 # -----------------------------
 # TAB 2: Patient-Specific ADT and ICU Stay Events
@@ -121,77 +121,273 @@ tab2_ui <- fluidPage(
   )
 )
 
+# Tab 2
+# Function to get patient demographics [VERIFIED]
+get_patient_info <- function(subject_id) {
+  query <- paste0("
+    SELECT p.subject_id, p.gender, p.anchor_age, a.race
+    FROM `biostat-203b-2025-winter.mimiciv_3_1.patients` p
+    LEFT JOIN `biostat-203b-2025-winter.mimiciv_3_1.admissions` a 
+    ON p.subject_id = a.subject_id
+    WHERE p.subject_id = ", subject_id, "
+    LIMIT 1
+  ")
+  dbGetQuery(con_bq, query)
+}
+
+# Function to get admissions [VERIFIED]
+get_admissions <- function(subject_id) {
+  query <- paste0("
+    SELECT subject_id, admittime, dischtime, 'ADT' AS event_type
+    FROM `biostat-203b-2025-winter.mimiciv_3_1.admissions`
+    WHERE subject_id = ", subject_id
+  )
+  
+  dbGetQuery(con_bq, query) %>%
+    mutate(
+      admittime = ymd_hms(admittime),
+      dischtime = ymd_hms(dischtime)
+    ) %>%
+    select(subject_id, admittime, dischtime, event_type)
+}
+
+# Function to get transfers [VERIFIED]
+get_transfers <- function(subject_id) {
+  query <- paste0("
+    SELECT subject_id, intime AS admittime, outtime AS dischtime, 'ADT' AS event_type, careunit
+    FROM `biostat-203b-2025-winter.mimiciv_3_1.transfers`
+    WHERE subject_id = ", subject_id
+  )
+
+  dbGetQuery(con_bq, query) %>%
+    mutate(
+      admittime = ymd_hms(admittime),
+      dischtime = ymd_hms(dischtime),
+      careunit = ifelse(is.na(careunit), "UNKNOWN", careunit),
+      is_icu_ccu = ifelse(str_detect(str_to_lower(careunit), "icu|ccu"), "ICU/CCU", "Other")
+    ) %>%
+    select(subject_id, admittime, dischtime, event_type, careunit, is_icu_ccu)
+}
+
+# Function to merge admissions and transfers [VERIFIED]
+get_adt_events <- function(subject_id) {
+  admissions_viz <- get_admissions(subject_id)
+  transfers_viz <- get_transfers(subject_id)
+  
+  bind_rows(admissions_viz, transfers_viz) %>%
+    arrange(admittime) %>%
+    mutate(careunit = ifelse(is.na(careunit), "UNKNOWN", careunit)
+    )
+}
+
+
+
+
+# Function to get lab events [VERIFIED]
+get_labs <- function(subject_id) {
+  query <- paste0("
+    SELECT subject_id, charttime AS admittime, 'Lab' AS event_type
+    FROM `biostat-203b-2025-winter.mimiciv_3_1.labevents`
+    WHERE subject_id = ", subject_id
+  )
+  
+  dbGetQuery(con_bq, query) %>%
+    mutate(admittime = with_tz(ymd_hms(admittime), "UTC")) %>%
+    select(subject_id, admittime, event_type)
+}
+
+# Function to get procedure events [VERIFIED]
+get_procedures <- function(subject_id) {
+  query <- paste0("
+    SELECT p.subject_id, 
+           p.chartdate AS admittime, 
+           'Procedure' AS event_type, 
+           COALESCE(dp.long_title, 'Unknown') AS procedure_desc
+    FROM `biostat-203b-2025-winter.mimiciv_3_1.procedures_icd` p
+    LEFT JOIN `biostat-203b-2025-winter.mimiciv_3_1.d_icd_procedures` dp 
+    ON p.icd_code = dp.icd_code
+    WHERE p.subject_id = ", subject_id
+  )
+  
+  dbGetQuery(con_bq, query) %>%
+    mutate(
+      admittime = ymd(admittime)
+    ) %>%
+    select(subject_id, admittime, event_type, procedure_desc)
+}
+
+# Function to get top 3 diagnoses [VERIFIED]
+get_top_diagnoses <- function(subject_id) {
+  query <- paste0("
+    SELECT DISTINCT dd.long_title, d.seq_num
+    FROM `biostat-203b-2025-winter.mimiciv_3_1.diagnoses_icd` d
+    LEFT JOIN `biostat-203b-2025-winter.mimiciv_3_1.d_icd_diagnoses` dd 
+    ON d.icd_code = dd.icd_code
+    WHERE d.subject_id = ", subject_id, "
+    ORDER BY d.seq_num
+    LIMIT 3
+  ")
+  
+  # Execute the query and get the result
+  result <- dbGetQuery(con_bq, query)
+  
+  # Return only the long_title column as a vector
+  result %>%
+    pull(long_title)  
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Server Logic for Tab 2
 tab2_server <- function(input, output, session) {
   observe({
     updateSelectizeInput(session, "subject_id", choices = unique(icu_cohort$subject_id), server = TRUE)
   })
   
-  # Retrieve Patient Demographics
+  # Retrieve Patient Info [VERIFIED]
+  # Gives you a table with subject_id, gender, anchor_age, race
   patient_info <- reactive({
     req(input$subject_id)
     query <- paste0("
-      SELECT DISTINCT p.subject_id, p.gender, p.anchor_age, a.race
+      SELECT p.subject_id, p.gender, p.anchor_age, a.race
       FROM `biostat-203b-2025-winter.mimiciv_3_1.patients` p
       LEFT JOIN `biostat-203b-2025-winter.mimiciv_3_1.admissions` a 
       ON p.subject_id = a.subject_id
-      WHERE p.subject_id = ", input$subject_id
-    )
+      WHERE p.subject_id = ", input$subject_id, "
+      LIMIT 1
+    ")
     dbGetQuery(con_bq, query)
   })
   
-  # Retrieve ADT Events
-  adt_data <- reactive({
-    req(input$subject_id)
+  # Run Queries and Store as Data Frames
+  transfers_reactive <- function(subject_id) {
     query <- paste0("
-      SELECT subject_id, TIMESTAMP(admittime) AS admittime, TIMESTAMP(dischtime) AS dischtime, 'ADT' AS event_type
-      FROM `biostat-203b-2025-winter.mimiciv_3_1.transfers`
-      WHERE subject_id = ", input$subject_id
+    SELECT subject_id, intime AS admittime, outtime AS dischtime, 'ADT' AS event_type, careunit
+    FROM `biostat-203b-2025-winter.mimiciv_3_1.transfers`
+    WHERE subject_id = ", subject_id
     )
-    dbGetQuery(con_bq, query)
-  })
-  
-  # Combine All Events for Timeline
-  timeline_events_viz <- reactive({
-    req(adt_data())
-    df <- adt_data()
-    df <- df %>% mutate(
-      admittime = as.POSIXct(admittime, tz = "UTC"),
-      dischtime = as.POSIXct(dischtime, tz = "UTC"),
-      y_position = 3
-    )
-    df
-  })
-  
-  output$patient_info <- renderTable({ patient_info() })
-  
-  output$timeline_plot <- renderPlot({
-    req(timeline_events_viz())
-    df <- timeline_events_viz()
     
-    ggplot(df, aes(x = admittime, y = y_position)) +
-      geom_segment(aes(xend = dischtime, yend = y_position), linewidth = 2, color = "blue") +
-      geom_point(size = 3, color = "black") +
-      scale_x_datetime(date_breaks = "1 week", date_labels = "%b %d") +
-      labs(title = paste("Patient", input$subject_id, "Timeline"),
-           x = "Calendar Time",
-           y = "Event Type") +
-      theme_minimal()
-  })
+    # Store query result in a data frame
+    transfers_viz <- dbGetQuery(con_bq, query) %>%
+      mutate(
+        admittime = ymd_hms(admittime),
+        dischtime = ymd_hms(dischtime),
+        careunit = ifelse(is.na(careunit), "UNKNOWN", careunit),
+        is_icu_ccu = ifelse(str_detect(str_to_lower(careunit), "icu|ccu"), "ICU/CCU", "Other")
+      ) %>%
+      select(subject_id, admittime, dischtime, event_type, careunit, is_icu_ccu)
+    
+    return(transfers_viz)  # Returns df with the desired name
+  }
 }
+  
+  
+  # Render Patient Info Table
+  output$patient_info <- renderTable({
+    patient_info()
+  })
+  
+}  
+
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+                    
+#     )
+#       SELECT subject_id, admittime, dischtime, NULL AS careunit
+#       FROM `biostat-203b-2025-winter.mimiciv_3_1.admissions`
+#       WHERE subject_id = ", input$subject_id, "
+#     ")
+#     dbGetQuery(con_bq, query)
+#   })
+#   # Retrieve ADT, Lab, and Procedure Events
+#   # Query components: transfers, admissions, 
+#   timeline_events_viz <- reactive({
+#     req(input$subject_id)
+#     
+#     query <- paste0("
+#       SELECT subject_id, intime AS admittime, outtime AS dischtime, 'ADT' AS event_type, careunit
+#       FROM `biostat-203b-2025-winter.mimiciv_3_1.transfers`
+#       WHERE subject_id = ", input$subject_id, "
+#       UNION ALL
+#       SELECT subject_id, admittime, dischtime, 'ADT' AS event_type
+#       FROM 'biostat-203b-2025-winter.mimiciv_3_1.admissions'
+#       WHERE subject_id = ", input$subject_id, "
+#       UNION ALL
+#       SELECT subject_id, charttime AS admittime, NULL AS dischtime, 'Lab' AS event_type, NULL AS careunit
+#       FROM `biostat-203b-2025-winter.mimiciv_3_1.labevents`
+#       WHERE subject_id = ", input$subject_id, "
+#       UNION ALL
+#       SELECT p.subject_id, p.chartdate AS admittime, NULL AS dischtime, 'Procedure' AS event_type, COALESCE(dp.long_title, 'Unknown') AS procedure_desc
+#       FROM `biostat-203b-2025-winter.mimiciv_3_1.procedures_icd` p
+#       LEFT JOIN `biostat-203b-2025-winter.mimiciv_3_1.d_icd_procedures` dp 
+#       ON p.icd_code = dp.icd_code
+#       WHERE p.subject_id = ", input$subject_id, "
+#       ORDER BY admittime
+#     ")
+#     
+#     df <- dbGetQuery(con_bq, query)
+#     
+#     df <- df %>%
+#       mutate(
+#         y_position = case_when(
+#           event_type == "ADT" ~ 3,
+#           event_type == "Lab" ~ 2,
+#           event_type == "Procedure" ~ 1,
+#           TRUE ~ NA_real_
+#         )
+#       )
+#     
+#     return(df)
+#   })
+#   
+#   # Render Timeline Plot
+#   output$timeline_plot <- renderPlot({
+#     req(timeline_events_viz())
+#     df <- timeline_events_viz()
+#     
+#     ggplot(df) +
+#       geom_segment(data = df %>% filter(event_type == "ADT"),
+#                    aes(x = admittime, xend = dischtime, y = y_position, yend = y_position, color = careunit),
+#                    linewidth = 2) +
+#       geom_point(data = df %>% filter(event_type == "Procedure"),
+#                  aes(x = admittime, y = y_position, shape = procedure_desc),
+#                  size = 3, color = "black") +
+#       geom_point(data = df %>% filter(event_type == "Lab"),
+#                  aes(x = admittime, y = y_position),
+#                  shape = 3, size = 3, color = "black") +
+#       scale_x_datetime(date_breaks = "1 week", date_labels = "%b %d") +
+#       theme_minimal()
+#   })
+# }
 
 # -----------------------------
-# Combine UI and Server
+# Run the App
 # -----------------------------
 ui <- navbarPage("MIMIC-IV ICU Data Explorer",
                  tabPanel("Summary", tab1_ui),
-                 tabPanel("Patient Info", tab2_ui)
-)
+                 tabPanel("Patient Info", tab2_ui))
 
 server <- function(input, output, session) {
   tab1_server(input, output)
   tab2_server(input, output, session)
 }
 
-# Run the Shiny App
 shinyApp(ui = ui, server = server)
