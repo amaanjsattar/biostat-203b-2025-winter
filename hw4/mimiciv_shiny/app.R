@@ -7,18 +7,28 @@ library(lubridate)
 library(here)
 library(bigrquery)
 library(DBI)
+here::i_am("hw4/mimiciv_shiny/app.R")
 
 # -----------------------------
 # BigQuery Authentication
 # -----------------------------
-satoken <- "biostat-203b-2025-winter-4e58ec6e5579.json"
+satoken <- here::here("hw4", "biostat-203b-2025-winter-4e58ec6e5579.json")
 bq_auth(path = satoken)
 
 # -----------------------------
 # TAB 1: Numerical and Graphical Summaries
 # -----------------------------
 # Load ICU Cohort Data (preprocessed RDS file)
+
 icu_cohort <- readRDS(here("hw4", "mimiciv_shiny", "mimic_icu_cohort.rds"))
+
+con_bq <- dbConnect(
+  bigrquery::bigquery(),
+  project = "biostat-203b-2025-winter",
+  dataset = "mimiciv_3_1",
+  billing = "biostat-203b-2025-winter"
+)
+dbListTables(con_bq)
 
 # Define Variable Choices for Tab 1
 demo_vars_cat <- c("race", "language", "insurance", "marital_status", "gender")
@@ -89,11 +99,3 @@ tab1_server <- function(input, output) {
 
 
 
-
-server <- function(input, output) {
-  tab1_server(input, output)
-
-}
-
-# Run the Shiny App
-shinyApp(ui = tab1_ui, server = server)
