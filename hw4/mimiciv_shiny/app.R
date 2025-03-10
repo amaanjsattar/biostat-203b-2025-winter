@@ -265,150 +265,166 @@ get_demo_title <- function(subject_id) {
 # Format subtitle with diagnoses
 format_subtitle <- function(subject_id) {
   paste(
-    get_top_diagnoses, 
+    get_top_diagnoses(subject_id), 
     collapse = '\n') 
 }
 
 
-
-
-
-
-
-
-
-# Server Logic for Tab 2
 tab2_server <- function(input, output, session) {
   observe({
     updateSelectizeInput(session, "subject_id", choices = unique(icu_cohort$subject_id), server = TRUE)
   })
   
-  # Retrieve Patient Info [VERIFIED]
-  # Gives you a table with subject_id, gender, anchor_age, race
-  patient_info <- reactive({
+  # Reactive to get and combine all events (ADT, Lab, Procedures)
+  timeline_events_viz <- reactive({
     req(input$subject_id)
-    query <- paste0("
-      SELECT p.subject_id, p.gender, p.anchor_age, a.race
-      FROM `biostat-203b-2025-winter.mimiciv_3_1.patients` p
-      LEFT JOIN `biostat-203b-2025-winter.mimiciv_3_1.admissions` a 
-      ON p.subject_id = a.subject_id
-      WHERE p.subject_id = ", input$subject_id, "
-      LIMIT 1
-    ")
-    dbGetQuery(con_bq, query)
+    
+    events <- get_timeline_events(input$subject_id)  # This combines ADT, lab, and procedure events
+    
+    return(events)
   })
   
-  # Run Queries and Store as Data Frames
-  transfers_reactive <- function(subject_id) {
-    query <- paste0("
-    SELECT subject_id, intime AS admittime, outtime AS dischtime, 'ADT' AS event_type, careunit
-    FROM `biostat-203b-2025-winter.mimiciv_3_1.transfers`
-    WHERE subject_id = ", subject_id
-    )
-    
-    # Store query result in a data frame
-    transfers_viz <- dbGetQuery(con_bq, query) %>%
-      mutate(
-        admittime = ymd_hms(admittime),
-        dischtime = ymd_hms(dischtime),
-        careunit = ifelse(is.na(careunit), "UNKNOWN", careunit),
-        is_icu_ccu = ifelse(str_detect(str_to_lower(careunit), "icu|ccu"), "ICU/CCU", "Other")
-      ) %>%
-      select(subject_id, admittime, dischtime, event_type, careunit, is_icu_ccu)
-    
-    return(transfers_viz)  # Returns df with the desired name
-  }
-}
+  # Reactive to generate title text with patient info
+  title_text <- reactive({
+    req(input$subject_id)
+    get_demo_title(input$subject_id)  # Title formatted with patient demographics
+  })
   
+  # Reactive to generate subtitle with top diagnoses
+  subtitle_text <- reactive({
+    req(input$subject_id)
+    format_subtitle(input$subject_id)  # Subtitle formatted with top diagnoses
+  })
   
   # Render Patient Info Table
   output$patient_info <- renderTable({
-    patient_info()
+    req(input$subject_id)
+    get_patient_info(input$subject_id)  # Get patient info for table display
   })
   
-}  
+  # Render Timeline Plot
+  output$timeline_plot <- renderPlot({
+    req(timeline_events_viz())  # Ensure we have the timeline data
+    
+    df <- timeline_events_viz()  # Get the data for the plot
+    
+    ggplot(df) +
+      # 1) ADT as segments at y_position = 3
+      geom_segment(
+        data = df %>% filter(event_type == 'ADT'),
+        aes(
+          x = admittime,
+          xend = dischtime,
+          y = y_position,
+          yend = y_position,
+          color = careunit,
+          linewidth = is_icu_ccu == 'ICU/CCU'  # Thicker lines for ICU/CCU
+        )
+      ) +
+      
+      # 2) Procedure as points at y_position = 1
+      geom_point(
+        data = df %>% filter(event_type == 'Procedure'),
+        aes(
+          x = admittime, 
+          y = y_position, 
+          shape = procedure_desc
+        ),
+        size = 3, color = "black"
+      ) +
+      
+      # 3) Lab as points at y_position = 2
+      geom_point(
+        data = df %>% filter(event_type == 'Lab'),
+        aes(
+          x = admittime, 
+          y = y_position
+        ),
+        shape = 3, size = 3, color = 'black'  # shape=3 = plus sign
+      ) +
+      
+      # 4) Control the x-axis breaks/labels
+      scale_x_datetime(date_breaks = '1 week',
+                       date_labels = '%b %d') +
+      
+      # 5) Manually control the y-axis
+      scale_y_continuous(
+        name = NULL, 
+        breaks = c(1, 2, 3),
+        limits = c(0.5, 3.5), 
+        labels = c('Lab', 'Procedure', 'ADT')  
+      ) +
+      
+      # 6) Title, subtitle, legend labels
+      labs(
+        title = title_text(),  # Use the formatted title
+        subtitle = subtitle_text(),  # Use the formatted subtitle
+        x = 'Calendar Time',
+        y = NULL,
+        color = 'Care Unit',     
+        shape = 'Procedure Type' 
+      ) +
+      
+      # 7) Use a theme (you can keep theme_minimal or switch to theme_light)
+      theme_minimal() +
+      theme(
+        panel.border = element_rect(color = 'black',
+                                    fill = NA,
+                                    linewidth = 1),
+        panel.grid.major = element_line(color = 'gray80'),
+        panel.grid.minor = element_blank(),
+        axis.line = element_blank(),
+        legend.position = 'bottom',
+        legend.box = 'vertical'
+      ) +
+      
+      # 8) Control the legend ordering and remove the linewidth legend
+      guides(
+        color = guide_legend(
+          override.aes = list(linewidth = 1.5),  
+          order = 1                              
+        ),
+        shape = guide_legend(
+          order = 2                              
+        ),
+        linewidth = 'none'                       
+      )
+  })
+  
+}
 
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-#     )
-#       SELECT subject_id, admittime, dischtime, NULL AS careunit
-#       FROM `biostat-203b-2025-winter.mimiciv_3_1.admissions`
-#       WHERE subject_id = ", input$subject_id, "
-#     ")
-#     dbGetQuery(con_bq, query)
-#   })
-#   # Retrieve ADT, Lab, and Procedure Events
-#   # Query components: transfers, admissions, 
-#   timeline_events_viz <- reactive({
-#     req(input$subject_id)
-#     
-#     query <- paste0("
-#       SELECT subject_id, intime AS admittime, outtime AS dischtime, 'ADT' AS event_type, careunit
-#       FROM `biostat-203b-2025-winter.mimiciv_3_1.transfers`
-#       WHERE subject_id = ", input$subject_id, "
-#       UNION ALL
-#       SELECT subject_id, admittime, dischtime, 'ADT' AS event_type
-#       FROM 'biostat-203b-2025-winter.mimiciv_3_1.admissions'
-#       WHERE subject_id = ", input$subject_id, "
-#       UNION ALL
-#       SELECT subject_id, charttime AS admittime, NULL AS dischtime, 'Lab' AS event_type, NULL AS careunit
-#       FROM `biostat-203b-2025-winter.mimiciv_3_1.labevents`
-#       WHERE subject_id = ", input$subject_id, "
-#       UNION ALL
-#       SELECT p.subject_id, p.chartdate AS admittime, NULL AS dischtime, 'Procedure' AS event_type, COALESCE(dp.long_title, 'Unknown') AS procedure_desc
-#       FROM `biostat-203b-2025-winter.mimiciv_3_1.procedures_icd` p
-#       LEFT JOIN `biostat-203b-2025-winter.mimiciv_3_1.d_icd_procedures` dp 
-#       ON p.icd_code = dp.icd_code
-#       WHERE p.subject_id = ", input$subject_id, "
-#       ORDER BY admittime
-#     ")
-#     
-#     df <- dbGetQuery(con_bq, query)
-#     
-#     df <- df %>%
-#       mutate(
-#         y_position = case_when(
-#           event_type == "ADT" ~ 3,
-#           event_type == "Lab" ~ 2,
-#           event_type == "Procedure" ~ 1,
-#           TRUE ~ NA_real_
-#         )
-#       )
-#     
-#     return(df)
-#   })
-#   
-#   # Render Timeline Plot
-#   output$timeline_plot <- renderPlot({
-#     req(timeline_events_viz())
-#     df <- timeline_events_viz()
-#     
-#     ggplot(df) +
-#       geom_segment(data = df %>% filter(event_type == "ADT"),
-#                    aes(x = admittime, xend = dischtime, y = y_position, yend = y_position, color = careunit),
-#                    linewidth = 2) +
-#       geom_point(data = df %>% filter(event_type == "Procedure"),
-#                  aes(x = admittime, y = y_position, shape = procedure_desc),
-#                  size = 3, color = "black") +
-#       geom_point(data = df %>% filter(event_type == "Lab"),
-#                  aes(x = admittime, y = y_position),
-#                  shape = 3, size = 3, color = "black") +
-#       scale_x_datetime(date_breaks = "1 week", date_labels = "%b %d") +
-#       theme_minimal()
-#   })
-# }
+# Part 2: Vital Measurements [VERIFIED]
+get_chart_events <- function(subject_id) {
+  query <- paste0("
+    SELECT 
+      ce.subject_id,
+      ce.charttime,
+      ce.itemid,
+      ce.value,
+      di.label AS abbreviation
+    FROM `biostat-203b-2025-winter.mimiciv_3_1.chartevents` ce
+    LEFT JOIN `biostat-203b-2025-winter.mimiciv_3_1.d_items` di
+      ON ce.itemid = di.itemid
+    WHERE ce.subject_id = ", subject_id, "
+      AND ce.itemid IN (220045, 220181, 220179, 223761, 220210)  # Vital signs
+  ")
+  
+  # Execute the query
+  chart_data <- dbGetQuery(con_bq, query) %>%
+    mutate(
+      charttime = with_tz(ymd_hms(charttime), "UTC")  # Adjust the time zone
+    ) %>%
+    arrange(subject_id, charttime, itemid)  # Sort by subject_id, chart time, and item id
+  
+  return(chart_data)
+}
+
+
+
+
 
 # -----------------------------
-# Run the App
+# Combine UI and Server
 # -----------------------------
 ui <- navbarPage("MIMIC-IV ICU Data Explorer",
                  tabPanel("Summary", tab1_ui),
@@ -419,4 +435,5 @@ server <- function(input, output, session) {
   tab2_server(input, output, session)
 }
 
+# Run the Shiny App
 shinyApp(ui = ui, server = server)
