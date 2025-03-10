@@ -103,6 +103,7 @@ tab1_server <- function(input, output) {
 # -----------------------------
 
 # UI for Tab 2
+# UI for Tab 2 (Updated with the new plot)
 tab2_ui <- fluidPage(
   titlePanel("Patient-Specific ADT and ICU Stay Information"),
   sidebarLayout(
@@ -116,7 +117,10 @@ tab2_ui <- fluidPage(
       tableOutput("patient_info"),
       hr(),
       h3("Combined Timeline of Events"),
-      plotOutput("timeline_plot")
+      plotOutput("timeline_plot"),
+      hr(),
+      h3("Vital Signs Over Time"),
+      plotOutput("vital_signs_plot")  # New plot output for the vital signs plot
     )
   )
 )
@@ -388,6 +392,59 @@ tab2_server <- function(input, output, session) {
           order = 2                              
         ),
         linewidth = 'none'                       
+      )
+  })
+  # Function to render the faceted vital signs plot
+  output$vital_signs_plot <- renderPlot({
+    req(input$subject_id)  # Ensure subject_id is available
+    
+    chart_data <- get_chart_events(input$subject_id)  # Fetch the vital signs data
+    
+    ggplot(chart_data, aes(x = charttime, y = value, color = abbreviation, 
+                           group = interaction(abbreviation, subject_id))) +
+      geom_line(linewidth = 1) +  # Plot the line
+      geom_point(size = 2) +  # Plot the points on the line
+      
+      facet_grid(rows = vars(abbreviation), cols = vars(subject_id), scales = 'free') +  # Faceting by abbreviation
+      scale_x_datetime(
+        breaks = seq(
+          floor_date(min(chart_data$charttime, na.rm = TRUE), unit = '3 hours'), 
+          ceiling_date(max(chart_data$charttime, na.rm = TRUE), unit = '3 hours'), 
+          by = '3 hours'
+        ),
+        labels = function(x) {
+          labels <- format(x, '%b %d %H:%M')  
+          labels[seq(2, length(labels), 2)] <- ''  # Remove some x-axis labels for better clarity
+          return(labels)
+        }
+      )  +  
+      
+      scale_color_manual(values = c(
+        'HR' = '#E74C3C',       
+        'NBPm' = '#9A8700',      
+        'NBPs' = '#009E73',      
+        'RR' = '#009ADE',        
+        'Temperature F' = '#E377C2'  
+      )) +  # Custom colors for each abbreviation
+      
+      labs(
+        title = paste0('Patient ', input$subject_id, ' ICU stays - Vitals'),
+        x = 'Calendar Time',
+        y = 'Vital Value'
+      ) +
+      
+      theme_minimal() +
+      theme(
+        strip.text.x = element_text(face = 'bold', size = 14, color = 'white'),  
+        strip.text.y.right = element_text(face = 'bold', size = 12, color = 'white'),  
+        strip.background = element_rect(fill = 'gray50', color = 'gray50'),  
+        strip.placement = 'outside',
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),  # Border around facets
+        panel.spacing = unit(0.2, 'cm'),  # Space between facet panels
+        panel.grid.major = element_line(color = "gray80"), 
+        panel.grid.minor = element_blank(),
+        axis.text.x = element_text(angle = 0, hjust = 0.5, size = 10),  # Customize x-axis labels
+        legend.position = 'none'  # Remove legend (not necessary here)
       )
   })
   
