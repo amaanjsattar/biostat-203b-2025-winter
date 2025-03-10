@@ -227,7 +227,6 @@ get_top_diagnoses <- function(subject_id) {
     ORDER BY d.seq_num
     LIMIT 3
   ")
-  
   # Execute the query and get the result
   result <- dbGetQuery(con_bq, query)
   
@@ -236,9 +235,39 @@ get_top_diagnoses <- function(subject_id) {
     pull(long_title)  
 }
 
+# Get timeline events [VERIFIED]
+get_timeline_events <- function(subject_id) {
+  adt_events <- get_adt_events(subject_id)
+  lab_events <- get_labs(subject_id)
+  procedure_events <- get_procedures(subject_id)
+  
+  bind_rows(adt_events, lab_events, procedure_events) %>%
+    arrange(admittime) %>%
+    mutate(
+      y_position = case_when(
+        event_type == "ADT" ~ 3,
+        event_type == "Lab" ~ 2,
+        event_type == "Procedure" ~ 1,
+        TRUE ~ NA_real_
+      )
+    )
+}
 
+# Format title for demographics [VERIFIED]
+get_demo_title <- function(subject_id) {
+  pid <- get_patient_info(subject_id)
+  paste0("Patient ID: ", pid$subject_id,   ', ',
+         pid$gender, ', ',
+         pid$anchor_age, ' years old, ',
+         pid$race)
+}
 
-
+# Format subtitle with diagnoses
+format_subtitle <- function(subject_id) {
+  paste(
+    get_top_diagnoses, 
+    collapse = '\n') 
+}
 
 
 
