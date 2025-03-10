@@ -165,18 +165,40 @@ labevents_tble %>% tally()
 Connect to `chartevents` table and retrieve a subset that only contain subjects who appear in `icustays_tble` and the chart events listed in HW3. Only keep the first chart events (by `storetime`) during ICU stay and pivot chart events to become variables/columns. Write all steps in _one_ chain of pipes. Similary to HW3, if a vital has multiple measurements at the first `storetime`, average them.
 ```{r}
 chartevents_tble <- 
-  tbl(con_bq, "chartevents") |>
-  filter(itemid %in% c(220045, 220179, 220180, 223761, 220210)) |>
-  inner_join(tbl(con_bq, "icustays"), by = c("subject_id", "hadm_id", "stay_id")) |>
-  filter(storetime >= intime, storetime < outtime) |>
-  group_by(subject_id, stay_id, itemid) |>
-  slice_min(order_by = storetime, n = 1) |>
+  tbl(con_bq,
+      "chartevents") |>
+  filter(itemid %in% c(220045,
+                       220179,
+                       220180,
+                       223761,
+                       220210)) |>
+  inner_join(tbl(con_bq,
+                 "icustays"),
+             by = c("subject_id",
+                    "hadm_id",
+                    "stay_id")) |>
+  filter(storetime >= intime,
+         storetime < outtime) |>
+  group_by(subject_id,
+           stay_id,
+           itemid) |>
+  slice_min(order_by = storetime,
+            n = 1) |>
   ungroup() |>
-  select(subject_id, stay_id, hadm_id, itemid, valuenum) |>
-  group_by(subject_id, stay_id, hadm_id, itemid) |>
-  summarise(valuenum = mean(valuenum, na.rm = TRUE)) |>
+  select(subject_id,
+         stay_id,
+         hadm_id,
+         itemid,
+         valuenum) |>
+  group_by(subject_id,
+           stay_id,
+           hadm_id,
+           itemid) |>
+  summarise(valuenum = mean(valuenum,
+                            na.rm = TRUE)) |>
   ungroup() |>
-  pivot_wider(names_from = itemid, values_from = valuenum) |>
+  pivot_wider(names_from = itemid,
+              values_from = valuenum) |>
   rename(
     `Heart Rate` = `220045`,
     `Noninvasive BP Systolic` = `220179`,
@@ -232,11 +254,21 @@ We proceed to preprocess the data. We examine Dr. Zhou's numerical summary of hi
 ```{r}
 mimic_icu_cohort_preprocessed <- mimic_icu_cohort %>%
   mutate(
-    first_careunit = fct_lump_n(first_careunit, n = 4, other_level = "Other"),
-    last_careunit = fct_lump_n(last_careunit, n = 4, other_level = "Other"),
-    admission_type = fct_lump_n(admission_type, n = 4, other_level = "Other"),
-    admission_location = fct_lump_n(admission_location, n = 3, other_level = "Other"),
-    discharge_location = fct_lump_n(discharge_location, n = 4, other_level = "Other")
+    first_careunit = fct_lump_n(first_careunit,
+                                n = 4,
+                                other_level = "Other"),
+    last_careunit = fct_lump_n(last_careunit,
+                               n = 4,
+                               other_level = "Other"),
+    admission_type = fct_lump_n(admission_type,
+                                n = 4,
+                                other_level = "Other"),
+    admission_location = fct_lump_n(admission_location,
+                                    n = 3,
+                                    other_level = "Other"),
+    discharge_location = fct_lump_n(discharge_location,
+                                    n = 4,
+                                    other_level = "Other")
   ) %>%
   # Ensure race is a factor so we can work with its levels
   mutate(race = factor(race)) %>%
@@ -244,15 +276,23 @@ mimic_icu_cohort_preprocessed <- mimic_icu_cohort %>%
     # Capture the current levels of race
     race_levels <- levels(.$race)
     mutate(., race = fct_collapse(race,
-      ASIAN    = race_levels[grep("ASIAN", race_levels)],
-      BLACK    = race_levels[grep("BLACK", race_levels)],
-      HISPANIC = race_levels[grep("HISPANIC", race_levels)],
-      WHITE    = race_levels[grep("WHITE", race_levels)],
+      ASIAN    = race_levels[grep("ASIAN",
+                                  race_levels)],
+      BLACK    = race_levels[grep("BLACK",
+                                  race_levels)],
+      HISPANIC = race_levels[grep("HISPANIC",
+                                  race_levels)],
+      WHITE    = race_levels[grep("WHITE",
+                                  race_levels)],
       OTHER    = setdiff(race_levels,
-                         c(race_levels[grep("ASIAN", race_levels)],
-                           race_levels[grep("BLACK", race_levels)],
-                           race_levels[grep("HISPANIC", race_levels)],
-                           race_levels[grep("WHITE", race_levels)]))
+                         c(race_levels[grep("ASIAN",
+                                            race_levels)],
+                           race_levels[grep("BLACK",
+                                            race_levels)],
+                           race_levels[grep("HISPANIC",
+                                            race_levels)],
+                           race_levels[grep("WHITE",
+                                            race_levels)]))
     ))
   }
 mimic_icu_cohort_preprocessed <- mimic_icu_cohort_preprocessed %>%
@@ -311,7 +351,8 @@ if (!dir.exists("mimiciv_shiny")) {
 }
 # save the final tibble
 mimic_icu_cohort |>
-  write_rds("mimiciv_shiny/mimic_icu_cohort.rds", compress = "gz")
+  write_rds("mimiciv_shiny/mimic_icu_cohort.rds",
+            compress = "gz")
 ```
 Close database connection and clear workspace.
 ```{r}
