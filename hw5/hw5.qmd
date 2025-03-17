@@ -13,6 +13,14 @@ format:
     code-fold: false
   pdf: default
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+```
 
 ## Predicting ICU duration
 
@@ -26,6 +34,8 @@ First, we need to load in the data and preprocess it. We will use the `mimic_icu
 # Load the data
 mimiciv_icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
 ```
+
+We can now go ahead with preprocessing. 
 
 
 
