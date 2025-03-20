@@ -26,6 +26,8 @@ library(naniar)
 library(lubridate)
 library(glmnet)
 library(vip)
+library(ranger)
+library(doParallel)
 ```
 
 ## Predicting ICU duration
@@ -156,9 +158,6 @@ For 'intime', we can extract the hour of admission and represent it cyclically u
 
 Here is our prepared recipe for preprocessing our data.
 ```{r}
-library(tidymodels)
-library(lubridate)
-
 icu_recipe<- recipe(los_long ~ ., data = mimiciv_icu_cohort) %>%
   update_role(subject_id, hadm_id, stay_id, new_role = "ID") %>%
   # Extract the hour from intime
@@ -180,6 +179,8 @@ icu_recipe<- recipe(los_long ~ ., data = mimiciv_icu_cohort) %>%
 summary(icu_recipe)
 
 ```
+MODEL 1: LOGISTIC REGRESSION WITH ENET REGULARIZATION
+
 Our first model is as follows:
 ```{r}
 logit_mod <- 
@@ -306,5 +307,159 @@ vip(final_logit_model, num_features = 20)
 ```
 It appears that the cosine component of hour of admission `hour_cos`, indicator for admission location `admission_location_TRANSFER.FROM_HOSPITAL`, `Heart Rate`, indicator for first care unit `first_careunit_Medical.Surgical.Intensive.Care.Unit..MICU.SICU.`, `Respiratory Rate`, and `Noninvasive BP Systolic` were among the most important features.
 
-Next, we can try a 
+MODEL 2: RANDOM FOREST
+We began this process using a coarser tuning grid to identify a promising region of the parameter space. We then refined our grid search within this region. We utilized parallel processing to expedite the tuning process.
+First, we define our random forest model:
+```{r}
+rf_mod <- 
+  rand_forest(
+    mode = "classification",
+    mtry = tune(),    # number of predictors randomly sampled at each split
+    trees = tune()    # number of trees in the ensemble
+  ) %>% 
+  set_engine("ranger", importance = "impurity")
+
+rf_mod
+```
+Next, we combine our recipe and random forest model into a workflow:
+```{r}
+rf_wf <- workflow() |>
+  add_recipe(icu_recipe) |>
+  add_model(rf_mod) |>
+  print()
+```
+
+Next, we define our tuning grid:
+```{r}
+param_grid_rf <- grid_regular(
+  trees(range = c(100L, 250L)),
+  mtry(range = c(1L, 3L)),
+  levels = c(3, 3)
+) %>% print()
+```
+
+Next, we set cross-validation partitioning, creating 5 folds:
+```{r}
+set.seed(203)
+rf_folds <- vfold_cv(train_data, v = 5, strata = los_long)
+rf_folds
+```
+Set up parallel processing: use all cores minus one.
+```{r}
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl)
+
+clusterEvalQ(cl, {
+  library(tidyverse)
+  library(tidymodels)
+  library(GGally)
+  library(gtsummary)
+  library(naniar)
+  library(lubridate)
+  library(glmnet)
+  library(vip)
+  library(ranger)
+})
+
+```
+
+
+Having our workflow and tuning grid, we run the grid search:
+```{r}
+rf_fit_coarse <- rf_wf |>
+  tune_grid(
+    resamples = rf_folds,
+    grid = param_grid_rf,
+    metrics = metric_set(roc_auc, accuracy)
+  )
+rf_fit_coarse
+```
+Stop the parallel cluster after tuning:
+```{r}
+stopCluster(cl)
+```
+
+
+Visualizing the results: 
+```{r}
+rf_fit_coarse %>%
+  collect_metrics() %>%
+  print(width = Inf) %>%
+  filter(.metric == "roc_auc") %>%
+  ggplot(mapping = aes(x = trees, y = mean, color = factor(mtry))) +
+  geom_point() +
+  labs(x = "Number of Trees", y = "CV AUC")
+```
+
+Next, we can review the best-performing models and select the top one:
+```{r}
+rf_fit_coarse %>%
+  show_best(metric = "roc_auc")
+
+best_rf <- rf_fit_coarse %>%
+  select_best(metric = "roc_auc")
+best_rf
+```
+
+We finalize our workflow:
+```{r}
+final_rf_wf <- rf_wf %>%
+  finalize_workflow(best_rf)
+final_rf_wf
+```
+
+Now, we can fit the final model on the entire training set and evaluate it on the test set using the `last_fit()` function:
+```{r}
+final_rf_fit <- final_rf_wf %>%
+  last_fit(data_split)
+final_rf_fit
+```
+
+Collect test metrics:
+```{r}
+final_rf_fit %>%
+  collect_metrics()
+```
+
+```{r}
+# Show all metrics for each combination in your grid
+rf_fit_coarse %>%
+  collect_metrics() %>%
+  print(width = Inf)
+
+# Display the top 5 models based on ROC AUC
+rf_fit_coarse %>%
+  show_best(metric = "roc_auc")
+
+```
+Now that we have run the coarse grid search, we can refine our grid search within the promising region of the parameter space. We will use the best-performing model from the coarse grid search as a starting point.
+```{r}
+# Select the best parameters based on ROC AUC from your coarse grid tuning
+best_rf <- rf_fit_coarse %>% 
+  select_best(metric = "roc_auc")
+print(best_rf)
+
+# Finalize your workflow using the best hyperparameters (mtry = 3 and trees = 250)
+final_rf_wf <- rf_wf %>% 
+  finalize_workflow(best_rf)
+print(final_rf_wf)
+
+# Fit the final random forest model on the entire training set and evaluate on the test set
+final_rf_fit <- final_rf_wf %>% 
+  last_fit(data_split)
+print(final_rf_fit)
+
+# Collect and display test set metrics (ROC AUC and Accuracy)
+final_rf_metrics <- final_rf_fit %>% 
+  collect_metrics()
+print(final_rf_metrics)
+
+# Optionally, extract the fitted model and generate a variable importance plot
+final_rf_model <- final_rf_fit %>% extract_fit_parsnip()
+vip(final_rf_model, num_features = 20)
+```
+
+For our Random Forest Model, we observe an AUC of 0.64527210 and an accuracy of 0.6017195. Examining feature importance based on 'Impurity', we observe that there is a group of features with relatively large importance values, followed by a drop-off in the variable importance plot. Namely, we observe that `Noninvasive BP Systolic`, `wbc_count`, `Heart Rate`, `Temperature_F`, `hematocrit`, `Noninvasive BP Diastolic`, `Respiratory Rate`, `age_intime`, `glucose`, `hour_cos`, `creatinine`, `potassium`, `chloride`, `bicarbonate`, `sodium`, and the sin component of hour of admission `hour_sin` were among the most important features. Interestingly, it appears that clinical vital signs and lab results were among the most important features in the Random Forest Model. This is a departure from what we observed in terms of variable importance in the Logistic Regression Model, where some of the categorical features recorded at the time of admission were also in the upper section of the variable importance plot.
+
+
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
