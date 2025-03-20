@@ -20,6 +20,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(tidymodels)
+library(GGally)
+library(gtsummary)
+library(naniar)
+library(lubridate)
+library(glmnet)
+library(vip)
 ```
 
 ## Predicting ICU duration
@@ -36,12 +42,160 @@ mimiciv_icu_cohort <- readRDS("../hw4/mimiciv_shiny/mimic_icu_cohort.rds")
 ```
 
 We can now go ahead with preprocessing. 
+Let's take a look at our dataset:
+```{r}
+head(mimiciv_icu_cohort)
+str(mimiciv_icu_cohort)
+```
 
+We first adapt our preprocessing code from HW4:
+```{r}
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
+  mutate(
+    first_careunit = fct_lump_n(first_careunit,
+                                n = 4,
+                                other_level = "Other"),
+    last_careunit = fct_lump_n(last_careunit,
+                               n = 4,
+                               other_level = "Other"),
+    admission_type = fct_lump_n(admission_type,
+                                n = 4,
+                                other_level = "Other"),
+    admission_location = fct_lump_n(admission_location,
+                                    n = 3,
+                                    other_level = "Other"),
+    discharge_location = fct_lump_n(discharge_location,
+                                    n = 4,
+                                    other_level = "Other")
+  ) %>%
+  # Ensure race is a factor so we can work with its levels
+  mutate(race = factor(race)) %>%
+  { 
+    # Capture the current levels of race
+    race_levels <- levels(.$race)
+    mutate(., race = fct_collapse(race,
+      ASIAN    = race_levels[grep("ASIAN",
+                                  race_levels)],
+      BLACK    = race_levels[grep("BLACK",
+                                  race_levels)],
+      HISPANIC = race_levels[grep("HISPANIC",
+                                  race_levels)],
+      WHITE    = race_levels[grep("WHITE",
+                                  race_levels)],
+      OTHER    = setdiff(race_levels,
+                         c(race_levels[grep("ASIAN",
+                                            race_levels)],
+                           race_levels[grep("BLACK",
+                                            race_levels)],
+                           race_levels[grep("HISPANIC",
+                                            race_levels)],
+                           race_levels[grep("WHITE",
+                                            race_levels)]))
+    ))
+  }
+
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
+  mutate(
+    insurance = as.factor(insurance),
+    language = as.factor(language),
+    marital_status = as.factor(marital_status),
+    gender = as.factor(gender)
+  )
+
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
+  mutate(los_long = los >= 2) %>%
+  mutate(los_long = as.factor(los_long))
+
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>% 
+  filter(!is.na(los_long))
+
+
+mimiciv_icu_cohort <- mimiciv_icu_cohort %>%
+  select(
+    subject_id,
+    hadm_id,
+    stay_id,
+    intime,
+    first_careunit,
+    los_long,
+    admission_type,
+    admission_location,
+    insurance,
+    language,
+    marital_status,
+    race,
+    gender,
+    chloride,
+    creatinine,
+    sodium,
+    potassium,
+    glucose,
+    hematocrit,
+    wbc_count,
+    bicarbonate,
+    `Noninvasive BP Systolic`,
+    `Noninvasive BP Diastolic`,
+    `Respiratory Rate`,
+    `Temperature_F`,
+    `Heart Rate`,
+    age_intime
+  )
+
+mimiciv_icu_cohort
+```
+Double-checking how our variables are stored:
+```{r}
+str(mimiciv_icu_cohort)
+```
+Now, we can check for missing values across our dataset:
+```{r}
+miss_var_summary(mimiciv_icu_cohort) 
+```
+We observe that lab results make up the majority of missing values. We will impute numeric variables with the median and categorical variables with the mode.Moreover, we can convert categorical variables into dummy (one-hot) encoded variables. We will also normalize our numeric predictors using centering and scaling. We will use the 'tidymodels' package to do this.
+For 'intime', we can extract the hour of admission and represent it cyclically using trigonometric transformations (sine and cosine). This approach is commonly utilized for encoding 24-hour time in machine learning models, and is further explained in https://ianlondon.github.io/posts/encoding-cyclical-features-24-hour-time/. 
+
+Here is our prepared recipe for preprocessing our data.
+```{r}
+library(tidymodels)
+library(lubridate)
+
+icu_recipe<- recipe(los_long ~ ., data = mimiciv_icu_cohort) %>%
+  update_role(subject_id, hadm_id, stay_id, new_role = "ID") %>%
+  # Extract the hour from intime
+  step_mutate(admission_hour = hour(intime)) %>%
+  # Create cyclic features for the hour
+  step_mutate(
+    hour_sin = sin(2 * pi * admission_hour / 24),
+    hour_cos = cos(2 * pi * admission_hour / 24)
+  ) %>%
+  # Remove the original intime and raw admission_hour if not needed
+  step_rm(intime, admission_hour) %>%
+  # Remaining steps: imputation, dummy coding, normalization
+  step_impute_median(all_numeric_predictors()) %>%
+  step_impute_mode(all_nominal_predictors()) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_zv(all_predictors()) %>%
+  step_normalize(all_numeric_predictors())
+
+summary(icu_recipe)
+
+```
+Our first model is as follows:
+```{r}
+logit_mod <- 
+  logistic_reg(
+    penalty = tune(), 
+    mixture = tune()
+  ) |> 
+  set_engine("glmnet", standardize = FALSE) |>
+  print()
+```
+Now, we can do our initial split of the data.
 
 
 2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
 ```{r}
-#| eval: false
+# #| eval: false
 set.seed(203)
 
 # sort
@@ -56,6 +210,101 @@ data_split <- initial_split(
   )
 ```
 
-3. Train and tune the models using the training set.
+Extracting our training and testing sets:
+```{r}
+train_data <- training(data_split)
+test_data <- testing(data_split)
+```
 
+Now, we combine our recipe and logistic regression model into a workflow:
+```{r}
+logit_wf <- workflow() |>
+  add_recipe(icu_recipe) |>
+  add_model(logit_mod) |>
+  print()
+```
+
+Now, we can tune our hyperparameters:
+```{r}
+# Define the tuning grid
+param_grid <- grid_regular(
+  penalty(range = c(-6, 3)), 
+  mixture(),
+  levels = c(100, 5)
+) |> print()
+```
+
+Next, we set cross-validation partitioning, creating 5 folds:
+```{r}
+set.seed(203)
+folds <- vfold_cv(train_data, v = 5, strata = los_long)
+```
+
+Having our workflow and tuning grid, we run the grid search: 
+```{r}
+logit_fit <- logit_wf |>
+  tune_grid(
+    resamples = folds,
+    grid = param_grid,
+    metrics = metric_set(roc_auc, accuracy)
+  )
+```
+We can inspect the results:
+```{r}
+logit_fit
+```
+And we can visualize results: 
+```{r}
+logit_fit |>
+  collect_metrics() |>
+  print(width = Inf) |>
+  filter(.metric == "roc_auc") |>
+  ggplot(mapping = aes(x = penalty, y = mean, color = factor(mixture))) +
+  geom_point() +
+  labs(x = "Penalty", y = "CV AUC") +
+  scale_x_log10()
+```
+This plot will show us how performance (CV AUC) varies with different penalty and mixture settings.
+
+Next, we can review the best-performing models and select the top one:
+```{r}
+# Show the top 5 models based on ROC AUC
+logit_fit |>
+  show_best(metric = "roc_auc")
+
+# Select the best model
+best_logit <- logit_fit |>
+  select_best(metric = "roc_auc")
+best_logit
+```
+We finalize our workflow: 
+```{r}
+final_logit_wf <- logit_wf |>
+  finalize_workflow(best_logit)
+final_logit_wf
+```
+
+Now, we can fit the final model on the entire trainingg set and evaluate it on the test set using the `last_fit()` function:
+```{r}
+final_logit_fit <- final_logit_wf |>
+  last_fit(data_split)
+final_logit_fit
+
+# Collect test metrics
+final_logit_fit |> 
+  collect_metrics()
+```
+For our Logistic Regression Model (with ENet Regularization), we observe an AUC of 0.614202 and an accuracy of 0.5820469. 
+
+Examining feature importance: 
+```{r}
+final_logit_model <- final_logit_fit %>% 
+  extract_fit_parsnip()
+
+# Create a VIP plot:
+vip(final_logit_model, num_features = 20)
+```
+It appears that the cosine component of hour of admission `hour_cos`, indicator for admission location `admission_location_TRANSFER.FROM_HOSPITAL`, `Heart Rate`, indicator for first care unit `first_careunit_Medical.Surgical.Intensive.Care.Unit..MICU.SICU.`, `Respiratory Rate`, and `Noninvasive BP Systolic` were among the most important features.
+
+Next, we can try a 
 4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
