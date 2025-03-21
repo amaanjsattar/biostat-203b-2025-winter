@@ -28,13 +28,12 @@ library(glmnet)
 library(vip)
 library(ranger)
 library(doParallel)
+library(xgboost)
 ```
 
 ## Predicting ICU duration
 
 Using the ICU cohort `mimiciv_icu_cohort.rds` you built in Homework 4, develop at least three machine learning approaches (logistic regression with enet regularization, random forest, boosting, SVM, MLP, etc) plus a model stacking approach for predicting whether a patient's ICU stay will be longer than 2 days. You should use the `los_long` variable as the outcome. You algorithms can use patient demographic information (gender, age at ICU `intime`, marital status, race), ICU admission information (first care unit), the last lab measurements before the ICU stay, and first vital measurements during ICU stay as features. You are welcome to use any feature engineering techniques you think are appropriate; but make sure to not use features that are not available at an ICU stay's `intime`. For instance, `last_careunit` cannot be used in your algorithms. 
-
-1. Data preprocessing and feature engineering.
 
 First, we need to load in the data and preprocess it. We will use the `mimic_icu_cohort_rds` file we created in Homework 4. We do not have to copy mimic_icu_cohort.rds into. Instead, we can use `../hw4/mimiciv_shiny/mimic_icu_cohort.rds`.
 
@@ -194,7 +193,7 @@ logit_mod <-
 Now, we can do our initial split of the data.
 
 
-2. Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
+Partition data into 50% training set and 50% test set. Stratify partitioning according to `los_long`. For grading purpose, sort the data by `subject_id`, `hadm_id`, and `stay_id` and use the seed `203` for the initial data split. Below is the sample code.
 ```{r}
 # #| eval: false
 set.seed(203)
@@ -461,5 +460,189 @@ vip(final_rf_model, num_features = 20)
 
 For our Random Forest Model, we observe an AUC of 0.64527210 and an accuracy of 0.6017195. Examining feature importance based on 'Impurity', we observe that there is a group of features with relatively large importance values, followed by a drop-off in the variable importance plot. Namely, we observe that `Noninvasive BP Systolic`, `wbc_count`, `Heart Rate`, `Temperature_F`, `hematocrit`, `Noninvasive BP Diastolic`, `Respiratory Rate`, `age_intime`, `glucose`, `hour_cos`, `creatinine`, `potassium`, `chloride`, `bicarbonate`, `sodium`, and the sin component of hour of admission `hour_sin` were among the most important features. Interestingly, it appears that clinical vital signs and lab results were among the most important features in the Random Forest Model. This is a departure from what we observed in terms of variable importance in the Logistic Regression Model, where some of the categorical features recorded at the time of admission were also in the upper section of the variable importance plot.
 
+MODEL 3: BOOSTING
+We proceed to fit a boosting model. First, we will define our boosting model with tunable hyperparameters:
+```{r}
+# Define the XGBoost model with tunable parameters
+xgb_mod <- boost_tree(
+  mode = "classification",
+  trees      = tune(),   # total number of trees
+  tree_depth = tune(),   # maximum tree depth
+  learn_rate = tune()    # learning rate
+) %>% 
+  set_engine("xgboost")
+xgb_mod
+```
+Next, we combine our recipe and boosting model into a workflow:
+```{r}
+xgb_wf <- workflow() |>
+  add_recipe(icu_recipe) |>
+  add_model(xgb_mod) |>
+  print()
+```
+Next, we define our tuning grid:
+```{r}
+param_grid_xgb <- grid_regular(
+  trees(range = c(100L, 500L)),
+  tree_depth(range = c(1L, 3L)),
+  learn_rate(range = c(-5, 2), trans = log10_trans()),
+  levels = c(3, 3, 3)) %>% 
+  print()
+```
 
-4. Compare model classification performance on the test set. Report both the area under ROC curve and accuracy for each machine learning algorithm and the model stacking. Interpret the results. What are the most important features in predicting long ICU stays? How do the models compare in terms of performance and interpretability?
+Next, we set cross-validation partitioning, creating 5 folds:
+```{r}
+set.seed(203)
+xgb_folds <- vfold_cv(train_data, v = 5, strata = los_long)
+xgb_folds
+```
+Next, we tune our model using the grid search. We will use parallel processing to expedite the tuning process.
+```{r}
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl)
+clusterEvalQ(cl, {
+  library(tidyverse)
+  library(tidymodels)
+  library(GGally)
+  library(gtsummary)
+  library(naniar)
+  library(lubridate)
+  library(glmnet)
+  library(vip)
+  library(ranger)
+})
+```
+
+```{r}
+xgb_fit <- xgb_wf |>
+  tune_grid(
+    resamples = xgb_folds,
+    grid = param_grid_xgb,
+    metrics = metric_set(roc_auc, accuracy)
+  )
+xgb_fit
+```
+Now, we can terminate our parallel processing:
+```{r}
+stopCluster(cl)
+```
+
+Visualizing the results:
+```{r}
+xgb_fit %>%
+  collect_metrics() %>%
+  filter(.metric == "roc_auc") %>%
+  ggplot(aes(x = learn_rate, y = mean, color = factor(tree_depth))) +
+  geom_point() +
+  labs(x = "Learning Rate", y = "CV AUC") +
+  scale_x_log10()
+```
+
+Next, we can review the best-performing models and select the top one:
+```{r}
+xgb_fit %>%
+  show_best(metric = "roc_auc")
+```
+Next, we select the best tuning parameters based on ROC AUC:
+```{r}
+best_xgb <- xgb_fit %>%
+  select_best(metric = "roc_auc")
+best_xgb
+```
+
+We finalize our workflow:
+```{r}
+final_xgb_wf <- xgb_wf %>%
+  finalize_workflow(best_xgb)
+final_xgb_wf
+```
+
+Now, we can fit the final model on the entire training set and evaluate it on the test set using the `last_fit()` function:
+```{r}
+final_xgb_fit <- final_xgb_wf %>%
+  last_fit(data_split)
+final_xgb_fit
+```
+
+Collect test metrics:
+```{r}
+final_xgb_fit %>%
+  collect_metrics() %>%
+  print()
+```
+
+Examining feature importance:
+```{r}
+final_xgb_model <- final_xgb_fit %>%
+  extract_fit_parsnip()
+
+vip(final_xgb_model, num_features = 20)
+```
+
+
+For our Boosting Model, we observe an AUC of 0.6480967 and an accuracy of 0.6053618. Examining feature importance, we observe that there isn't necessarily a sharp 'drop-off' in the variable importance plot, so we will identify the top 10 features based on importance. Namely, we observe that `Temperature_F`, the hour component of admission time `hour_cos`, `Noninvasive BP Systolic`, the indicator for admission location `admission_location_TRANSFER.FROM_HOSPITAL`, `age_intime`, `wbc_count`, `Respiratory Rate`, `creatinine`, `Heart Rate`, and `hematocrit` were among the most important features.
+
+We have now created our three non-stacked models, and we can summarize their performance and feature importance. We can extract the top ten features from each model:
+```{r}
+# For Logistic Regression:
+final_logit_model <- final_logit_fit %>% extract_fit_parsnip()
+top10_logit <- vi(final_logit_model) %>%
+  arrange(desc(Importance)) %>%
+  slice_head(n = 10)
+cat("Top 10 features for Logistic Regression Model:\n")
+print(top10_logit)
+
+# For Random Forest:
+final_rf_model <- final_rf_fit %>% extract_fit_parsnip()
+top10_rf <- vi(final_rf_model) %>%
+  arrange(desc(Importance)) %>%
+  slice_head(n = 10)
+cat("\nTop 10 features for Random Forest Model:\n")
+print(top10_rf)
+
+# For XGBoost:
+final_xgb_model <- final_xgb_fit %>% extract_fit_parsnip()
+top10_xgb <- vi(final_xgb_model) %>%
+  arrange(desc(Importance)) %>%
+  slice_head(n = 10)
+cat("\nTop 10 features for XGBoost Model:\n")
+print(top10_xgb)
+```
+It would be interesting to see if there are any features that were commonly identified as important across all three models:
+```{r}
+# Compute the intersection of the top 10 variable names from each model
+common_features <- Reduce(intersect, list(top10_logit$Variable,
+                                            top10_rf$Variable,
+                                            top10_xgb$Variable))
+cat("Common features across all top 10 lists:\n")
+print(common_features)
+
+```
+
+We observe that across our Logistic Regression Model with Elastic Net Regularization, our Random Forest Model, and our Boosting Model, these features consistently appeared in the top ten in importance: `hour_cos`, `Heart Rate`, `Respiratory Rate`, `Noninvasive BP Systolic`, `wbc_count`, and `hematocrit`. 
+
+Now, we can chronicle the observed performance on the test set from each of these models, in terms of AUC and Accuracy:
+```{r}
+logit_metrics <- final_logit_fit %>% 
+  collect_metrics() %>% 
+  mutate(Model = "Logistic Regression")
+
+rf_metrics <- final_rf_fit %>% 
+  collect_metrics() %>% 
+  mutate(Model = "Random Forest")
+
+xgb_metrics <- final_xgb_fit %>% 
+  collect_metrics() %>% 
+  mutate(Model = "XGBoost")
+
+# Combine the metrics and filter for roc_auc and accuracy, using .estimate as the metric value
+performance_metrics <- bind_rows(logit_metrics, rf_metrics, xgb_metrics) %>%
+  filter(.metric %in% c("roc_auc", "accuracy")) %>%
+  select(Model, .metric, .estimate) %>%
+  pivot_wider(names_from = .metric, values_from = .estimate)
+
+performance_metrics
+```
+We observe that the Random Forest and XGBoost models had similar overall performance on the test set, while logistic regression performed slightly worse in terms of these two performance metrics. There is certainly a tradeoff between model accuracy and interpretability to be explored, and the decision to report one model over another should be made with careful consideration of intention and audience. For instance, a statistician prioritizing interpretability such that they can communicate generalizable results to clinician colleagues may opt for logistic regression in this instance, despite its relatively lower performance. Meanwhile, a machine learning engineer hoping to develop a prediction algorithm for length of ICU stay based on clinical features may opt to maximize their performance at the expense of interpretability, while still maintaining generalizable results. An individual participating in a hackathon or statistical modeling competition who simply aims to achieve maximal performance on the unseen test data may fully prioritize performance at the expense of gleaning insights from the model, possibly resorting to more "black-box" complex algorithmic approaches that leverage high computational power. Ultimately, our models all predicted length of ICU stay within a similar "neighborhood" of accuracy, and it will be interesting to compare their individual performance with that of a stacked model.
+
+
