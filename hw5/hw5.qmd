@@ -29,6 +29,9 @@ library(vip)
 library(ranger)
 library(doParallel)
 library(xgboost)
+library(stacks)
+library(yardstick)
+library(purrr)
 ```
 
 ## Predicting ICU duration
@@ -645,4 +648,226 @@ performance_metrics
 ```
 We observe that the Random Forest and XGBoost models had similar overall performance on the test set, while logistic regression performed slightly worse in terms of these two performance metrics. There is certainly a tradeoff between model accuracy and interpretability to be explored, and the decision to report one model over another should be made with careful consideration of intention and audience. For instance, a statistician prioritizing interpretability such that they can communicate generalizable results to clinician colleagues may opt for logistic regression in this instance, despite its relatively lower performance. Meanwhile, a machine learning engineer hoping to develop a prediction algorithm for length of ICU stay based on clinical features may opt to maximize their performance at the expense of interpretability, while still maintaining generalizable results. An individual participating in a hackathon or statistical modeling competition who simply aims to achieve maximal performance on the unseen test data may fully prioritize performance at the expense of gleaning insights from the model, possibly resorting to more "black-box" complex algorithmic approaches that leverage high computational power. Ultimately, our models all predicted length of ICU stay within a similar "neighborhood" of accuracy, and it will be interesting to compare their individual performance with that of a stacked model.
 
+Now, we create our stacked model. To reduce computational complexity and runtime, we will reduce the number of folds we utilize for each individual model, as well as the size of the grid. 
+
+```{r}
+# Instead of 100 penalty levels, let's only do 5
+# For mixture, let's do 3 levels
+param_grid_logit_small <- grid_regular(
+  penalty(range = c(-4, 0)),  # narrower range
+  mixture(range = c(0, 1)),   # full range for mixture
+  levels = c(5, 3)
+)
+```
+
+```{r}
+set.seed(203)
+folds2 <- vfold_cv(train_data, v = 2, strata = los_long)
+cl <- makeCluster(parallel::detectCores() - 1)
+registerDoParallel(cl)
+clusterEvalQ(cl, {
+  library(tidyverse)
+  library(tidymodels)
+  library(GGally)
+  library(gtsummary)
+  library(naniar)
+  library(lubridate)
+  library(glmnet)
+  library(vip)
+  library(ranger)
+})
+
+# Use control_stack_grid() if you plan to use these results in stacking
+# DO NOT have a parallel backend running here
+# No cluster setup needed
+
+
+logit_fit2 <- logit_wf %>%
+  tune_grid(
+    resamples = folds2,
+    grid = param_grid_logit_small,
+    metrics = metric_set(roc_auc, accuracy),
+    control = control_stack_grid()
+  )
+stopCluster(cl)
+
+```
+We can also do our Random Forest with Reduced Folds and grid size:
+```{r}
+param_grid_rf_small <- grid_regular(
+  trees(range = c(100L, 200L)),  # from 100 to 200 trees
+  mtry(range = c(1L, 3L)),       # from 1 to 3 for mtry
+  levels = c(3, 3)               # 3 levels each → 3 × 3 = 9 combos
+)
+param_grid_rf_small
+
+set.seed(203)
+rf_folds2 <- vfold_cv(train_data, v = 2, strata = los_long)
+
+cl <- makeCluster(parallel::detectCores() - 1)
+registerDoParallel(cl)
+clusterEvalQ(cl, {
+  library(tidyverse)
+  library(tidymodels)
+  library(GGally)
+  library(gtsummary)
+  library(naniar)
+  library(lubridate)
+  library(glmnet)
+  library(vip)
+  library(ranger)
+})
+
+rf_fit_small <- rf_wf %>%
+  tune_grid(
+    resamples = rf_folds2,
+    grid = param_grid_rf_small,
+    metrics = metric_set(roc_auc, accuracy),
+    control = control_stack_grid()
+  )
+
+stopCluster(cl)
+
+rf_fit_small
+
+
+```
+
+as well as XGBoost with Reduced Folds and grid size:  
+```{r}
+param_grid_xgb_small <- grid_regular(
+  trees(range = c(100L, 300L)),      # from 100 to 300 trees, 3 levels
+  tree_depth(range = c(1L, 3L)),     # from depth 1 to 3, 2 or 3 levels
+  learn_rate(range = c(-3, -2), trans = log10_trans()),
+  # e.g., 10^-3 to 10^-2 → 2 levels
+  levels = c(3, 2, 2)    # 3 × 2 × 2 = 12 total combos
+)
+param_grid_xgb_small
+
+set.seed(203)
+xgb_folds2 <- vfold_cv(train_data, v = 2, strata = los_long)
+
+cl <- makeCluster(parallel::detectCores() - 1)
+registerDoParallel(cl)
+clusterEvalQ(cl, {
+  library(tidyverse)
+  library(tidymodels)
+  library(GGally)
+  library(gtsummary)
+  library(naniar)
+  library(lubridate)
+  library(glmnet)
+  library(vip)
+  library(ranger)
+})
+xgb_fit_small <- xgb_wf %>%
+  tune_grid(
+    resamples = xgb_folds2,
+    grid = param_grid_xgb_small,
+    metrics = metric_set(roc_auc, accuracy),
+    control = control_stack_grid()
+  )
+
+stopCluster(cl)
+
+xgb_fit_small
+
+```
+
+```{r}
+# Combine all resample metrics data frames
+metrics_combined <- map_dfr(logit_fit2$.metrics, ~ .x)
+
+# Count the distinct .config values
+num_configs_filtered <- metrics_combined %>%
+  distinct(.config) %>%
+  nrow()
+
+cat("Number of candidate configurations in logit_fit_filtered:",
+    num_configs_filtered, "\n")
+```
+Lastly, we will create the stacked model:
+```{r}
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl)
+clusterEvalQ(cl, {
+  library(tidyverse)
+  library(tidymodels)
+  library(GGally)
+  library(gtsummary)
+  library(glmnet)
+  library(vip)
+  library(ranger)
+  library(stacks)
+})
+```
+Here, we set the penalty term based on autoplot() after fitting the stacked model to our data.
+
+```{r}
+# Build the stacking ensemble using the candidate tuning results from your three models.
+icu_model_stack <- stacks() %>%
+  # Add the candidates from each model. (These objects should have been tuned with control = control_stack_grid().)
+  add_candidates(logit_fit2) %>%
+  add_candidates(rf_fit_small) %>%
+  add_candidates(xgb_fit_small) %>%
+  # Blend predictions: this fits a meta-model that combines the candidates.
+  blend_predictions(
+    penalty = 1e-2,
+    metrics = metric_set(roc_auc)
+  ) %>%
+  # Fit the ensemble members (only those with nonzero stacking coefficients)
+  fit_members()
+
+# Display the stacked model object
+icu_model_stack
+
+```
+
+
+```{r}
+stopCluster(cl)
+```
+Now that we have our model, we fit it on the training data and evaluate it on the test set, just as we did for our individual models:
+```{r}
+# Get probability predictions from the stacked model
+stacked_preds <- predict(icu_model_stack, new_data = test_data,
+                         type = "prob") %>%
+  bind_cols(test_data)
+
+# Convert probabilities into predicted classes (threshold at 0.5)
+stacked_preds <- stacked_preds %>%
+  mutate(.pred_class = if_else(.pred_TRUE >= 0.5, "TRUE", "FALSE") %>% 
+           factor(levels = c("FALSE", "TRUE")))
+# Compute ROC AUC
+stacked_auc <- stacked_preds %>%
+  roc_auc(truth = los_long, .pred_TRUE) %>%
+  mutate(Model = "Stacked Ensemble")
+
+# Compute Accuracy
+stacked_accuracy <- stacked_preds %>%
+  accuracy(truth = los_long, estimate = .pred_class) %>%
+  mutate(Model = "Stacked Ensemble")
+
+
+```
+Now we incorporate the stacked model performance into our performance metrics: 
+```{r}
+stacked_wide <- bind_rows(stacked_auc, stacked_accuracy) %>%
+  # pivot them so we get columns "accuracy" and "roc_auc"
+  tidyr::pivot_wider(
+    names_from = .metric, 
+    values_from = .estimate
+  )
+final_model_performance <- bind_rows(
+  performance_metrics, 
+  stacked_wide
+)
+
+final_model_performance
+
+```
+
+We observe an AUC of 0.3523246 (our lowest by a considerable margin for all models), and an accuracy on par with our other models at 0.6068865. The likely reason for this low AUC is the lack of diversity in our candidate configurations. Due to exorbitant runtimes and issues with R crashes, I opted to limit grid size as well as cross validation. As a result, We miss out on potentially crucial diversity in our model selection process. Additionally, our ensemble model may have discarded more diverse base models based on the training set that would have generalized well to the test set. Lastly, it is possible that our stacked model overfit the data, and it is an unlikely but existent possibility that there are systematic differences between the test and training sets. I intend on diagnosing these issues over time to iterate upon the stacked model and achieve a more satisfactory AUC. Still, the discrepancy in AUC values is undoubtedly insightful and motivating for future ML-focused endeavors. 
+
+Overall, the three individual models performed similarly on training and test data, with XGBoost marginally coming out on top in both metrics. The stacked ensemble model did not seem to add any predictive accuracy to our task, and in fact seems to have compromised ability to perform well at our classification task. Accuracy is just barely larger than that of XGBoost, and AUC is by far the lowest. This is an important consideration for us, considering that AUC is robust to class imbalances. It would be interesting to determine whether model misclassification appears to be random or systematic in some way. I plan to explore these items further in the coming weeks. 
 
